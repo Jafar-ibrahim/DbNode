@@ -1,7 +1,7 @@
 package org.example.dbnode.Exception;
 
-public class ResourseNotExistsException extends Exception{
-    public ResourseNotExistsException(String resource) {
+public class ResourceNotFoundException extends Exception{
+    public ResourceNotFoundException(String resource) {
         super(resource+" does not exist.");
     }
 }

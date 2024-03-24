@@ -1,7 +1,7 @@
 package org.example.dbnode.Exception;
 
-public class DatabaseAlreadyExistsException extends Exception{
-    public DatabaseAlreadyExistsException() {
-        super("Database already exists.");
+public class ResourceAlreadyExistsException extends Exception{
+    public ResourceAlreadyExistsException(String resource) {
+        super(resource+" already exists.");
     }
 }

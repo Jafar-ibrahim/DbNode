@@ -1,2 +1,4 @@
-package org.example.dbnode.Model;public class JsonProperty {
+package org.example.dbnode.Model;
+
+public class JsonProperty {
 }
