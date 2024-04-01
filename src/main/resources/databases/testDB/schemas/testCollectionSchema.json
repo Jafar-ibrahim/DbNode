@@ -1,0 +1,13 @@
+{
+  "type" : "object",
+  "id" : "urn:jsonschema:org:example:dbnode:Model:testModel",
+  "properties" : {
+    "id" : {
+      "type" : "string"
+    },
+    "name" : {
+      "type" : "string",
+      "required" : true
+    }
+  }
+}

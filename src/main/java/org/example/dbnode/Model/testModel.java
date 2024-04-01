@@ -2,10 +2,9 @@ package org.example.dbnode.Model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.*;
 
 @Setter
 @Getter
@@ -18,4 +17,9 @@ public class testModel {
     private String name;
     @JsonIgnore
     private int number;
+    public ObjectNode toJson(testModel model) {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode objectNode = mapper.valueToTree(model);
+        return objectNode;
+    }
 }

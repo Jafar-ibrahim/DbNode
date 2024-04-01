@@ -13,9 +13,7 @@ import lombok.Setter;
 
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Map;
+import java.util.*;
 
 @Getter
 @Setter
@@ -31,14 +29,16 @@ public class Schema {
 
         ObjectNode schemaNode = mapper.createObjectNode();
         schemaNode.put("type", type);
-        schemaNode.putPOJO("properties", properties);
-        if (getRequired() != null) {
-            ArrayNode requiredArray = mapper.createArrayNode();
-            for (String requiredField : required) {
-                requiredArray.add(requiredField);
-            }
-            schemaNode.set("required", requiredArray);
+
+        ObjectNode propertiesNode = mapper.createObjectNode();
+        for (Map.Entry<String, String> entry : properties.entrySet()) {
+            ObjectNode propertyNode = mapper.createObjectNode();
+            propertyNode.put("type", entry.getValue());
+            propertyNode.put("required", Arrays.asList(required).contains(entry.getKey()));
+            propertiesNode.set(entry.getKey(), propertyNode);
         }
+        schemaNode.set("properties", propertiesNode);
+
         return schemaNode;
     }
     public static JsonNode of(Class<?> clazz) throws IOException {
@@ -48,4 +48,47 @@ public class Schema {
 
         return mapper.convertValue(schema, JsonNode.class);
     }
+    public static Schema convertJsonToSchema(String jsonSchema) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode schemaNode = mapper.readValue(jsonSchema, JsonNode.class);
+
+        String type = schemaNode.get("type").asText();
+
+        Map<String, String> properties = new HashMap<>();
+        List<String> requiredList = new ArrayList<>();
+        JsonNode propertiesNode = schemaNode.get("properties");
+        propertiesNode.fieldNames().forEachRemaining(field -> {
+            properties.put(field, propertiesNode.get(field).get("type").asText());
+            if (propertiesNode.get(field).has("required") && propertiesNode.get(field).get("required").asBoolean()) {
+                requiredList.add(field);
+            }
+        });
+
+        String[] required = requiredList.toArray(new String[0]);
+
+        return new Schema(type, properties, required);
+    }
+    /*
+    // Example JSON Schema
+    {
+      "type" : "object",
+      "id" : "urn:jsonschema:org:example:dbnode:Model:testModel",
+      "properties" : {
+        "id" : {
+          "type" : "string"
+        },
+        "name" : {
+          "type" : "string",
+          "required" : true
+        },
+        "version" : {
+          "type" : "integer",
+          "required" : true
+        },
+        "replicated" : {
+          "type" : "boolean",
+          "required" : true
+        }
+      }
+   }*/
 }

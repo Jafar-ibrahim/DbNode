@@ -1,17 +1,36 @@
 package org.example.dbnode.Model;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.Map;
-@Getter
-@Setter
-@AllArgsConstructor
 @NoArgsConstructor
+@Getter
 public class Document {
-    private String id;
+
     private ObjectNode content;
+
+    public Document(ObjectNode content) {
+        this.content = content;
+    }
+    public String getId() {
+        return content.get("_id").asText();
+    }
+    public void setId(String id) {
+        content.put("_id", id);
+    }
+    public Long getVersion() {
+        return content.get("_version").asLong();
+    }
+    public void setVersion(Long version) {
+        content.put("_version", version);
+    }
+    public boolean isReplicated() {
+        return content.get("replicated").asBoolean();
+    }
+    public void setReplicated(boolean replicated) {
+        content.put("replicated", replicated);
+    }
+
+
 }

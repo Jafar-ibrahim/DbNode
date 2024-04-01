@@ -13,6 +13,5 @@ import java.util.Map;
 @NoArgsConstructor
 public class Collection {
     private String name;
-    private Map<String,Document> documentMap;
     private Schema schema;
 }

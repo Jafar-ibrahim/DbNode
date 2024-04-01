@@ -3,18 +3,22 @@ package org.example.dbnode.Model;
 import org.example.dbnode.Exception.InvalidDatabaseNameException;
 import org.example.dbnode.Exception.InvalidResourceNameException;
 import org.example.dbnode.Service.FileService;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
+@Component
 public class DatabaseRegistry {
-    private final Map<String, Database> databases;
+    private final ConcurrentHashMap<String, Database> databases;
     private static DatabaseRegistry instance;
 
     private DatabaseRegistry() {
-        this.databases = new HashMap<>();
+        this.databases = new ConcurrentHashMap<>();
     }
 
     public static DatabaseRegistry getInstance() {
@@ -43,6 +47,9 @@ public class DatabaseRegistry {
 
     public List<String> readDatabases() {
         return new ArrayList<>(databases.keySet());
+    }
+    public boolean databaseExists(String databaseName) {
+        return databases.containsKey(databaseName);
     }
 
     /*public void deleteDatabase(String databaseName) {
