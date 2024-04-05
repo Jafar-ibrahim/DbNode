@@ -1,8 +1,12 @@
 package org.example.dbnode.Indexing;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.log4j.Log4j2;
+import org.example.dbnode.DatabaseDiskCRUD;
 import org.example.dbnode.Exception.ResourceNotFoundException;
 import org.example.dbnode.Model.DatabaseRegistry;
+import org.example.dbnode.Model.Schema;
 import org.example.dbnode.Service.FileService;
 import org.jetbrains.annotations.NotNull;
 
@@ -19,7 +23,6 @@ public class IndexingManager {
     private final Map<String, CollectionIndex> collectionsIndexMap = new ConcurrentHashMap<>();
     private final Map<String, PropertyIndex> propertyIndexMap = new ConcurrentHashMap<>();
     private final FileService fileService;
-    private static IndexingManager instance;
 
     private IndexingManager() {
         this.fileService = FileService.getInstance();
@@ -29,12 +32,11 @@ public class IndexingManager {
             loadAllIndexes(dbName);
         }
     }
-
+    private static final class InstanceHolder {
+        private static final IndexingManager instance = new IndexingManager();
+    }
     public static IndexingManager getInstance() {
-        if (instance == null) {
-            instance = new IndexingManager();
-        }
-        return instance;
+        return InstanceHolder.instance;
     }
     public void createCollectionIndex(String databaseName, String collectionName) {
         String key = getCollectionIndexKey(databaseName, collectionName);
@@ -57,7 +59,7 @@ public class IndexingManager {
         CollectionIndex collectionIndex = getCollectionIndex(databaseName,collectionName);
         Integer existingValue = collectionIndex.search(documentId);
         if (existingValue == null) {
-            int index = collectionIndex.getSize()+1;
+            int index = collectionIndex.getSize();
             collectionIndex.insert(documentId, index);
             String indexFilePath = fileService.getCollectionIndexFile(databaseName, collectionName).getPath();
             fileService.appendToIndexFile(indexFilePath, documentId, String.valueOf(index));
@@ -82,17 +84,20 @@ public class IndexingManager {
     public boolean deleteCollectionIndex(String databaseName,String collectionName) {
         String key = getCollectionIndexKey(databaseName, collectionName);
         if (collectionsIndexMap.containsKey(key)) {
+            // Delete all property indexes for this collection
+            propertyIndexMap.entrySet().removeIf(entry -> entry.getKey().startsWith(key));
+
             collectionsIndexMap.remove(key);
             File indexesDirectory = fileService.getCollectionIndexesDirectory(databaseName, collectionName);
             try {
                 fileService.deleteRecursively(indexesDirectory.toPath());
+                return true;
             } catch (IOException e) {
                 log.error("Failed to delete collection index directory for collection : "+collectionName);
                 return false;
             }
+        }else
             return true;
-        }
-        return true;
     }
 
     private void updateIndexes(@NotNull CollectionIndex collectionIndex, Integer deletedIndex) {
@@ -112,7 +117,7 @@ public class IndexingManager {
         }
     }
     public Integer searchInCollectionIndex(String databaseName,String collectionName, String documentId) throws ResourceNotFoundException {
-        Integer result=  getCollectionIndex(databaseName,collectionName).search(documentId);
+        Integer result =  getCollectionIndex(databaseName,collectionName).search(documentId);
         if (result == null) {
             log.error("Document not found in the index.");
             throw new ResourceNotFoundException("Document (in " + collectionName+")");
@@ -233,6 +238,17 @@ public class IndexingManager {
             propertyIndex.insert(entry.getKey(), entry.getValue());
         }
         log.info("loaded property index for collection: " + collectionName + " property: " + propertyName);
+    }
+
+    public void deleteDocumentRelatedIndexes(String databaseName,String collectionName, String documentId) throws ResourceNotFoundException {
+        DatabaseDiskCRUD databaseDiskCRUD = DatabaseDiskCRUD.getInstance();
+        Schema collectionSchema = databaseDiskCRUD.getCollectionSchema(databaseName, collectionName);
+        // Delete from all property indexes
+        for (String propertyName : collectionSchema.getProperties().keySet()) {
+            deleteFromPropertyIndex(databaseName,collectionName, propertyName, documentId);
+        }
+        // Delete from collection index
+        deleteDocumentFromCollectionIndex(databaseName,collectionName, documentId);
     }
 
 

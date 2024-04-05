@@ -10,14 +10,14 @@ import lombok.*;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class testModel {
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+public class TestModel {
+    @JsonProperty(namespace = "id", access = JsonProperty.Access.READ_ONLY, required = true)
     private String id;
-    @JsonProperty(access = JsonProperty.Access.READ_WRITE, required = true)
+    @JsonProperty(namespace = "name",access = JsonProperty.Access.READ_WRITE, required = true)
     private String name;
     @JsonIgnore
     private int number;
-    public ObjectNode toJson(testModel model) {
+    public ObjectNode toJson(TestModel model) {
         ObjectMapper mapper = new ObjectMapper();
         ObjectNode objectNode = mapper.valueToTree(model);
         return objectNode;

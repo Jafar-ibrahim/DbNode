@@ -13,6 +13,11 @@ public class Document {
     public Document(ObjectNode content) {
         this.content = content;
     }
+
+    public void setContent(ObjectNode content) {
+        this.content = content;
+    }
+
     public String getId() {
         return content.get("_id").asText();
     }

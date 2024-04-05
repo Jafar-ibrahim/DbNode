@@ -16,7 +16,6 @@ public class LocksManager {
     private final ConcurrentHashMap<String, ReentrantLock> collectionLocks;
     private final ConcurrentHashMap<String, ReentrantLock> documentLocks;
     private final IndexingManager indexingManager;
-    private static LocksManager instance;
 
     private LocksManager() {
         this.databaseLocks = new ConcurrentHashMap<>();
@@ -25,11 +24,14 @@ public class LocksManager {
         this.indexingManager = IndexingManager.getInstance();
     }
 
-    public static LocksManager getInstance() {
-        if (instance == null)
-            instance = new LocksManager();
-        return instance;
+    private static final class InstanceHolder {
+        private static final LocksManager instance = new LocksManager();
     }
+
+    public static LocksManager getInstance() {
+        return InstanceHolder.instance;
+    }
+
     public void deleteDatabaseLock(String databaseName) {
         databaseLocks.remove(databaseName);
     }
@@ -42,64 +44,57 @@ public class LocksManager {
         documentLocks.remove(indexingManager.getDocumentIndexKey(databaseName,collectionName,documentId));
     }
 
-    public ReentrantLock createDatabaseLockThenLock(String databaseName) {
-        ReentrantLock lock = new ReentrantLock();
-        databaseLocks.put(databaseName, lock);
-        lock.lock();
-        return lock;
-    }
-
-    public ReentrantLock createCollectionLockThenLock(String databaseName, String collectionName) {
-        ReentrantLock lock = new ReentrantLock();
-        collectionLocks.put(indexingManager.getCollectionIndexKey(databaseName,collectionName), lock);
-        lock.lock();
-        return lock;
-    }
-
-    public ReentrantLock createDocumentLockThenLock(String databaseName, String collectionName, String documentId) {
-        ReentrantLock lock = new ReentrantLock();
-        documentLocks.put(indexingManager.getDocumentIndexKey(databaseName,collectionName,documentId), lock);
-        lock.lock();
-        return lock;
-    }
-
     public ReentrantLock getDatabaseLock(String databaseName) throws ResourceNotFoundException {
         ReentrantLock lock = databaseLocks.get(databaseName);
         if (lock == null) {
-            if(DatabaseRegistry.getInstance().databaseExists(databaseName))
-                databaseLocks.put(databaseName, new ReentrantLock());
-            else {
-                log.error("Error obtaining lock for database: "+databaseName);
-                throw new ResourceNotFoundException("Database lock");
+            if (DatabaseRegistry.getInstance().databaseExists(databaseName)) {
+                ReentrantLock newLock = new ReentrantLock();
+                lock = databaseLocks.putIfAbsent(databaseName, newLock);
+                if (lock == null) {
+                    lock = newLock;
+                }
+            } else {
+                log.error("Error obtaining lock for database: " + databaseName);
+                throw new ResourceNotFoundException("Database");
             }
         }
         return lock;
     }
 
-    public ReentrantLock getCollectionLock(String databaseName,String collectionName) throws ResourceNotFoundException {
-        ReentrantLock lock = collectionLocks.get(collectionName);
+    public ReentrantLock getCollectionLock(String databaseName, String collectionName) throws ResourceNotFoundException {
+        try {
+            String key = indexingManager.getCollectionIndexKey(databaseName, collectionName);
+            return collectionLocks.computeIfAbsent(key, k -> {
+                if (indexingManager.collectionIndexExists(databaseName, collectionName)) {
+                    return new ReentrantLock();
+                } else {
+                    log.error("Error obtaining lock for collection: " + collectionName + " in database: " + databaseName);
+                    throw new RuntimeException(new ResourceNotFoundException("Collection"));
+                }
+            });
+        } catch (RuntimeException e) {
+            if (e.getCause() instanceof ResourceNotFoundException) {
+                throw (ResourceNotFoundException) e.getCause();
+            } else {
+                throw e;
+            }
+        }
+    }
+    public ReentrantLock getDocumentLock(String databaseName, String collectionName, String documentId) throws ResourceNotFoundException {
+        String key = indexingManager.getDocumentIndexKey(databaseName, collectionName, documentId);
+        ReentrantLock lock = documentLocks.get(key);
         if (lock == null) {
-            if(indexingManager.collectionIndexExists(databaseName,collectionName))
-                collectionLocks.put(indexingManager.getCollectionIndexKey(databaseName,collectionName), new ReentrantLock());
-            else{
-                log.error("Error obtaining lock for collection: "+collectionName+" in database: "+databaseName);
-                throw new ResourceNotFoundException("Collection lock");
+            if (indexingManager.documentExistsInCollectionIndex(databaseName, collectionName, documentId)) {
+                ReentrantLock newLock = new ReentrantLock();
+                lock = documentLocks.putIfAbsent(key, newLock);
+                if (lock == null) {
+                    lock = newLock;
+                }
+            } else {
+                log.error("Error obtaining lock for document with id: " + documentId + " in collection: " + collectionName + " in database: " + databaseName);
+                throw new ResourceNotFoundException("Document");
             }
         }
         return lock;
     }
-
-    public ReentrantLock getDocumentLock(String databaseName,String collectionName,String documentId) throws ResourceNotFoundException {
-        ReentrantLock lock = documentLocks.get(documentId);
-        if (lock == null) {
-            if (indexingManager.documentExistsInCollectionIndex(databaseName,collectionName,documentId))
-                documentLocks.put(indexingManager.getDocumentIndexKey(databaseName,collectionName,documentId), new ReentrantLock());
-            else{
-                log.error("Error obtaining lock for document with id: "+documentId+" in collection: "+collectionName+" in database: "+databaseName);
-                throw new ResourceNotFoundException("Document lock");
-            }
-        }
-        return lock;
-    }
-
 }

@@ -2,15 +2,14 @@ package org.example.dbnode.Model;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.module.jsonSchema.jakarta.JsonSchema;
-import com.fasterxml.jackson.module.jsonSchema.jakarta.JsonSchemaGenerator;
+import com.fasterxml.jackson.module.jsonSchema.jakarta.*;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.ValidationMessage;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
 
 import java.io.IOException;
 import java.util.*;
@@ -41,14 +40,15 @@ public class Schema {
 
         return schemaNode;
     }
-    public static JsonNode of(Class<?> clazz) throws IOException {
+    public static JsonNode fromClass(Class<?> clazz) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         JsonSchemaGenerator schemaGen = new JsonSchemaGenerator(mapper);
         JsonSchema schema = schemaGen.generateSchema(clazz);
 
         return mapper.convertValue(schema, JsonNode.class);
     }
-    public static Schema convertJsonToSchema(String jsonSchema) throws IOException {
+
+    public static Schema of(String jsonSchema) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         JsonNode schemaNode = mapper.readValue(jsonSchema, JsonNode.class);
 
@@ -68,6 +68,36 @@ public class Schema {
 
         return new Schema(type, properties, required);
     }
+
+    /*public boolean validateDocument(ObjectNode jsonNode) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonSchemaGenerator schemaGen = new JsonSchemaGenerator(mapper);
+            JsonSchema schema = schemaGen.generateSchema(Schema.class);
+            JsonNode schemaNode = mapper.valueToTree(schema);
+
+            JsonNode jsonNodeSchema = mapper.readTree(schemaNode.toString());
+            JsonNode jsonNodeDocument = mapper.readTree(jsonNode.toString());
+
+            // validate the document
+            if (jsonNodeSchema.equals(jsonNodeDocument)) {
+                return true;
+            } else {
+                return false;
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Validation failed: " + e.getMessage());
+        }
+    }*/
+    public boolean validateDocument(ObjectNode jsonToValidate) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        // this line will generate JSON schema from your class
+        JsonNode schemaNode = this.toJson();
+        // validate it against the schema
+        Set<ValidationMessage> validationMessages = JsonSchemaFactory.getInstance().getSchema(schemaNode).validate(jsonToValidate);
+        return validationMessages.isEmpty();
+    }
+}
     /*
     // Example JSON Schema
     {
@@ -91,4 +121,4 @@ public class Schema {
         }
       }
    }*/
-}
+

@@ -11,6 +11,7 @@ import org.apache.commons.io.FileUtils;
 import org.example.dbnode.Exception.OperationFailedException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
 import org.example.dbnode.Indexing.CollectionIndex;
+import org.example.dbnode.Model.Schema;
 import org.springframework.stereotype.Service;
 import org.example.dbnode.Indexing.PropertyIndex;
 
@@ -19,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -26,13 +28,15 @@ import java.util.stream.Stream;
 public final class FileService {
     private static final String ROOT_PATH = "src/main/resources/databases";
 
-    // To apply synchronization when needed in the first couple of requests
-    // instead of synchronizing every request
-    private static class Loader {
-        static final FileService instance = new FileService();
+    private static final class InstanceHolder {
+        private static final FileService instance = new FileService();
     }
-    public static FileService getInstance(){
-        return Loader.instance;
+
+    public static FileService getInstance() {
+        return InstanceHolder.instance;
+    }
+    private FileService() {
+        createDirectoryIfNotExist(Paths.get(ROOT_PATH));
     }
 
     public synchronized void createDirectoryIfNotExist(Path path){
@@ -93,21 +97,19 @@ public final class FileService {
     public boolean deleteFile(File file){
         return file.delete();
     }
+    public ArrayNode getCollectionDocuments(String databaseName, String collectionName) {
+        File collectionFile = getCollectionFile(databaseName, collectionName);
+        return readJsonArrayFile(collectionFile);
+    }
+
     public void deleteRecursively(Path path) throws IOException {
         if (Files.exists(path)) {
-            if (Files.isDirectory(path)) {
-                try(Stream<Path> pathStream = Files.walk(path)) {
-                    pathStream.sorted(Comparator.reverseOrder()) // to delete children first
-                            .forEach(p -> {
-                                try {
-                                    deleteRecursively(p);
-                                } catch (IOException e) {
-                                    log.error("Recursive deletion failed");
-                                }
-                            });
+            try (Stream<Path> pathStream = Files.walk(path)) {
+                List<Path> pathsToDelete = pathStream.sorted(Comparator.reverseOrder()).toList();
+                for (Path p : pathsToDelete) {
+                    Files.deleteIfExists(p);
                 }
             }
-            Files.delete(path);
         }
     }
 
@@ -238,6 +240,17 @@ public final class FileService {
             return false;
         }
     }
+    public List<String> getAllDatabases() {
+        List<String> databases = new ArrayList<>();
+        File databaseRoot = new File(ROOT_PATH);
+        File[] dbDirectories = databaseRoot.listFiles(File::isDirectory);
+        if (dbDirectories != null) {
+            for (File dbDir : dbDirectories) {
+                databases.add(dbDir.getName());
+            }
+        }
+        return databases;
+    }
     public boolean isPropertyIndexFile(String fileName) {
         return fileName.endsWith("_property_index.txt");
     }
@@ -303,9 +316,8 @@ public final class FileService {
         document.put("_version", document.get("_version").asLong() + 1);
     }
 
-    public ObjectNode assignIdForDocument(ObjectNode document) {
+    public ObjectNode assignIdForDocument(ObjectNode document , String id) {
         ObjectNode newDocument = JsonNodeFactory.instance.objectNode();
-        String id = document.has("_id") ? document.get("_id").asText() : UUID.randomUUID().toString();
         newDocument.put("_id", id);
         document.fields().forEachRemaining(field -> {
             if (!field.getKey().equals("_id")) {
@@ -318,7 +330,7 @@ public final class FileService {
     public boolean directoryNotExist(File file) {
         return !file.isDirectory();
     }
-    public static boolean invalidResourceName(String name){
+    public boolean invalidResourceName(String name){
         return name == null || name.trim().isEmpty() ||
                name.contains(" ") || name.contains("/") ||
                name.contains("\\");

@@ -1,45 +1,49 @@
 package org.example.dbnode.Model;
 
-import org.example.dbnode.Exception.InvalidDatabaseNameException;
 import org.example.dbnode.Exception.InvalidResourceNameException;
+import org.example.dbnode.Exception.ResourceAlreadyExistsException;
+import org.example.dbnode.Indexing.IndexingManager;
 import org.example.dbnode.Service.FileService;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 @Component
 public class DatabaseRegistry {
     private final ConcurrentHashMap<String, Database> databases;
-    private static DatabaseRegistry instance;
+    private final FileService fileService ;
 
     private DatabaseRegistry() {
         this.databases = new ConcurrentHashMap<>();
+        fileService = FileService.getInstance();
+        for(String database :fileService.getAllDatabases()){
+            databases.put(database,new Database(database));
+        }
+    }
+
+    private static final class InstanceHolder {
+        private static final DatabaseRegistry instance = new DatabaseRegistry();
     }
 
     public static DatabaseRegistry getInstance() {
-        if (instance == null)
-            instance = new DatabaseRegistry();
-        return instance;
+        return InstanceHolder.instance;
     }
 
-    public synchronized void createDatabase(String databaseName) {
-        if (FileService.invalidResourceName(databaseName)) {
+    public synchronized void addDatabase(String databaseName) throws ResourceAlreadyExistsException {
+        if (fileService.invalidResourceName(databaseName)) {
             throw new InvalidResourceNameException("Database");
         }
-        if (databases.containsKey(databaseName)) {
-            return;
+        if (databaseExists(databaseName)) {
+            throw new ResourceAlreadyExistsException("Database");
         }
         Database database = new Database(databaseName);
         databases.put(databaseName, database);
     }
 
     public Database getOrCreateDatabase(String databaseName) {
-        if (FileService.invalidResourceName(databaseName)) {
+        if (fileService.invalidResourceName(databaseName)) {
             throw new InvalidResourceNameException("Database");
         }
         return databases.computeIfAbsent(databaseName, Database::new);
@@ -52,11 +56,11 @@ public class DatabaseRegistry {
         return databases.containsKey(databaseName);
     }
 
-    /*public void deleteDatabase(String databaseName) {
+    public void deleteDatabase(String databaseName) {
         if (databaseName == null || databaseName.trim().isEmpty()) {
-            throw new InvalidDatabaseNameException();
+            throw new InvalidResourceNameException("Database");
         }
         databases.remove(databaseName);
-        IndexManager.getInstance().deleteAllIndexes(); //clear all the indexes if
-    }*/
+        IndexingManager.getInstance().deleteAllIndexes(); //clear all the indexes if
+    }
 }
