@@ -1,4 +1,4 @@
-package org.example.dbnode.Broadcast;
+package org.example.dbnode.Model;
 
 import lombok.Getter;
 import lombok.Setter;

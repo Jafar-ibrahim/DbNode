@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.example.dbnode.Affinity.AffinityBalancer;
 import org.example.dbnode.Affinity.RedirectionService;
 import org.example.dbnode.Broadcast.Broadcaster;
-import org.example.dbnode.Broadcast.Request;
+import org.example.dbnode.Model.Request;
 import org.example.dbnode.Exception.OperationFailedException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
 import org.example.dbnode.Exception.SchemaMismatchException;

@@ -2,12 +2,12 @@ package org.example.dbnode.Broadcast;
 
 import lombok.extern.log4j.Log4j2;
 import org.example.dbnode.Model.NodeInfo;
+import org.example.dbnode.Model.Request;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
-import java.util.Objects;
 
 @Log4j2
 public class Broadcaster {

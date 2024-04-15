@@ -1,7 +1,7 @@
 package org.example.dbnode.Controller;
 
 import org.example.dbnode.Broadcast.Broadcaster;
-import org.example.dbnode.Broadcast.Request;
+import org.example.dbnode.Model.Request;
 import org.example.dbnode.Exception.ResourceAlreadyExistsException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
 import org.example.dbnode.Service.AuthenticationService;

@@ -1,6 +1,6 @@
 package org.example.dbnode.Affinity;
 
-import org.example.dbnode.Broadcast.Request;
+import org.example.dbnode.Model.Request;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
