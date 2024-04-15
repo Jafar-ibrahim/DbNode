@@ -3,6 +3,7 @@ package org.example.dbnode.Controller;
 import org.example.dbnode.Exception.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
@@ -36,6 +37,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SchemaMismatchException.class)
     public ResponseEntity<String> handleSchemaMismatchException(SchemaMismatchException e) {
         return new ResponseEntity<>(e.getMessage(), HttpStatus.CONFLICT);
+    }
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<String> handleAccessDeniedException(AccessDeniedException e) {
+        return new ResponseEntity<>("Access Denied", HttpStatus.FORBIDDEN);
     }
 
 }

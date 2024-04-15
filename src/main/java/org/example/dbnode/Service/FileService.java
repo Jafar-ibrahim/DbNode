@@ -8,10 +8,13 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.io.FileUtils;
+import org.example.dbnode.Enum.Role;
 import org.example.dbnode.Exception.OperationFailedException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
 import org.example.dbnode.Indexing.CollectionIndex;
 import org.example.dbnode.Model.Schema;
+import org.example.dbnode.Model.User;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.example.dbnode.Indexing.PropertyIndex;
 
@@ -27,6 +30,8 @@ import java.util.stream.Stream;
 @Log4j2
 public final class FileService {
     private static final String ROOT_PATH = "src/main/resources/databases";
+    private static final String USERS_FILE_PATH ="src/main/resources/dbData/users.json";
+    private static final String ADMINS_FILE_PATH ="src/main/resources/dbData/admins.json";
 
     private static final class InstanceHolder {
         private static final FileService instance = new FileService();
@@ -325,6 +330,84 @@ public final class FileService {
             }
         });
         return newDocument;
+    }
+    public void saveUser(ObjectNode userJson) {
+        Role role = Role.valueOf(userJson.get("role").asText());
+        String path = (role == Role.ADMIN) ? ADMINS_FILE_PATH : USERS_FILE_PATH;
+        ArrayNode jsonArray = getExistingUsers(path);
+        jsonArray.add(userJson);
+        createDirectoriesIfNotExist();
+        writeJsonArrayFile(Path.of(path), jsonArray);
+    }
+
+    private ArrayNode getExistingUsers(String path) {
+        ObjectMapper mapper = new ObjectMapper();
+        if (isFileExists(path)) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
+                return (ArrayNode) mapper.readTree(reader);
+            } catch (IOException e) {
+                log.error("Error reading the file: " + e.getMessage());
+            }
+        }
+        return mapper.createArrayNode();
+    }
+
+    private void createDirectoriesIfNotExist() {
+        try {
+            Files.createDirectories(Path.of(USERS_FILE_PATH).getParent());
+        } catch (IOException e) {
+            log.error("Error creating directories: " + e.getMessage());
+        }
+    }
+
+    public void deleteUser(String username) {
+        ArrayNode jsonArray = readJsonArrayFile(getUsersFile());
+        if (jsonArray == null) return;
+
+        jsonArray.remove(indexOf(jsonArray, username));
+        writeJsonArrayFile(getUsersFile().toPath(), jsonArray);
+    }
+
+    private int indexOf(ArrayNode arrayNode, String username) {
+        for (int i = 0; i < arrayNode.size(); i++) {
+            if (arrayNode.get(i).get("username").asText().equals(username)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public Optional<User> getAdminByUsername(String username) {
+        return getUser(username, ADMINS_FILE_PATH);
+    }
+    public Optional<User> getUserByUsername(String username) {
+        return getUser(username, USERS_FILE_PATH);
+    }
+
+    @NotNull
+    private Optional<User> getUser(String username, String usersFilePath) {
+        ArrayNode jsonArray = getExistingUsers(usersFilePath);
+        for (int i = 0; i < jsonArray.size(); i++) {
+            ObjectNode userObject = (ObjectNode) jsonArray.get(i);
+            String adminUsername = userObject.get("username").asText();
+            if (adminUsername != null && adminUsername.equals(username)) {
+                User user = new User(adminUsername,userObject.get("password").asText(), Role.ADMIN);
+                return Optional.of(user);
+            }
+        }
+        return Optional.empty();
+    }
+
+    public boolean isFileExists(String filePath){
+        Path path = Paths.get(filePath);
+        return Files.exists(path);
+    }
+
+    public File getUsersFile(){
+        return new File(USERS_FILE_PATH);
+    }
+    public File getAdminsFile(){
+        return new File(ADMINS_FILE_PATH);
     }
 
     public boolean directoryNotExist(File file) {

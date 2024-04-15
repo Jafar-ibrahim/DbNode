@@ -52,6 +52,11 @@ public class DocumentService {
         databaseDiskCRUD.updateDocumentProperty(databaseName, collectionName, documentId, expectedVersion, propertyName, newValueCasted);
     }
 
+    public String readDocumentProperty(String databaseName, String collectionName, String documentId, String propertyName) {
+        log.info("reading " + propertyName + " property from document: " + documentId + " in collection: " + collectionName + " in database: " + databaseName);
+        return databaseDiskCRUD.readDocumentProperty(databaseName, collectionName, documentId, propertyName);
+    }
+
     public Optional<Document> fetchDocument(String databaseName, String collectionName, String documentId){
         log.info("fetching document: " + documentId + " from collection: " + collectionName + " in database: " + databaseName);
         return databaseDiskCRUD.fetchDocumentFromDatabase(databaseName, collectionName, documentId);

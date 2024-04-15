@@ -329,6 +329,10 @@ public class DatabaseDiskCRUD {
         return IndexingManager.getInstance().searchInCollectionIndex(databaseName, collectionName, documentId);
     }
 
+    public String readDocumentProperty(String databaseName, String collectionName, String documentId, String propertyName) {
+        return indexingManager.searchInPropertyIndex(databaseName, collectionName, propertyName, documentId);
+    }
+
     public ObjectNode fetchNodeById(String databaseName, String collectionName, String documentId){
         ArrayNode jsonArray = fileService.readJsonArrayFile(fileService.getCollectionFile(databaseName, collectionName));
         int index;
