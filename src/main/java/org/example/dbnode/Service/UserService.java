@@ -24,7 +24,7 @@ public class UserService {
         this.fileService = fileService;
     }
 
-    public void addUser(String accountNumber, String password) throws OperationFailedException, ResourceAlreadyExistsException {
+    public void addUser(String username, String password) throws OperationFailedException, ResourceAlreadyExistsException {
         File usersFile = fileService.getUsersFile();
         if (!usersFile.exists()) {
             fileService.writeJsonArrayFile(usersFile.toPath(), mapper.createArrayNode());
@@ -35,19 +35,19 @@ public class UserService {
         }
         for (Object userObj : usersArray) {
             ObjectNode user = (ObjectNode) userObj;
-            if (user.get("accountNumber").asText().equals(accountNumber)) {
+            if (user.get("username").asText().equals(username)) {
                 throw new ResourceAlreadyExistsException("user");
             }
         }
         ObjectNode user = mapper.createObjectNode();
-        user.put("accountNumber", accountNumber);
+        user.put("username", username);
         user.put("password", password); //hashing the password
         usersArray.add(user);
         fileService.writeJsonArrayFile(usersFile.toPath(), usersArray);
     }
 
 
-    public void deleteUser(String accountNumber) throws OperationFailedException, ResourceNotFoundException {
+    public void deleteUser(String username) throws OperationFailedException, ResourceNotFoundException {
         File usersFile = fileService.getUsersFile();
         if (!usersFile.exists()) {
             throw new OperationFailedException("read the file in database " + usersFile);
@@ -60,7 +60,7 @@ public class UserService {
         Iterator<JsonNode> iterator = usersArray.elements();
         while (iterator.hasNext()) {
             ObjectNode user = (ObjectNode) iterator.next();
-            if (user.get("accountNumber").asText().equals(accountNumber)) {
+            if (user.get("username").asText().equals(username)) {
                 iterator.remove();
                 found = true;
                 break;

@@ -1,6 +1,7 @@
 package org.example.dbnode.Controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import lombok.extern.log4j.Log4j2;
 import org.example.dbnode.Broadcast.Broadcaster;
 import org.example.dbnode.Model.Request;
 import org.example.dbnode.Exception.OperationFailedException;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.List;
+@Log4j2
 @EnableMethodSecurity(securedEnabled = true)
 @RestController
 @RequestMapping("/api/databases/{db_name}/collections")
@@ -37,17 +39,22 @@ public class CollectionController {
     @PostMapping("/{collection_name}")
     public ResponseEntity<String> createCollection(@PathVariable("db_name") String dbName,
                                                    @PathVariable("collection_name") String collectionName,
-                                                   @RequestParam("schema") JsonNode schema,
+                                                   @RequestBody JsonNode schema,
                                                    @RequestHeader(value = "X-Broadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
                                                    @RequestHeader("username") String username,
                                                    @RequestHeader("password") String password) throws ResourceAlreadyExistsException, IOException, ResourceNotFoundException {
 
+
+        if(isBroadcasted){
+            log.info("Received broadcast request to create collection: ("+collectionName+") in database: ("+dbName+")");
+        }
         collectionService.createCollection(dbName, collectionName, schema);
         if (!isBroadcasted){
             Broadcaster.broadcast(
                     new Request()
                             .setMethod(HttpMethod.POST)
                             .addAuthHeaders(username, password)
+                            .setBody(schema)
                             .setUrl("http://nodeNODE_ID:9000/api/databases/"+dbName+"/collections/"+collectionName));
         }
         return new ResponseEntity<>("Collection created successfully", HttpStatus.CREATED);
@@ -61,6 +68,9 @@ public class CollectionController {
                                                    @RequestHeader("password") String password) throws OperationFailedException, IOException, ResourceNotFoundException {
 
 
+        if(isBroadcasted){
+            log.info("Received broadcast request to delete collection: ("+collectionName+") from database: ("+dbName+")");
+        }
         collectionService.deleteCollection(dbName, collectionName);
         if (!isBroadcasted){
             Broadcaster.broadcast(

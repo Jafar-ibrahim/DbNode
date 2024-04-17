@@ -27,7 +27,7 @@ public class IndexingManagerTest {
     }
 
     @Test
-    public void createIndex_createsNewIndex_whenIndexDoesNotExist() {
+    public void createIndex_createsNewIndex_whenIndexDoesNotExist() throws ResourceNotFoundException {
         String databaseName = "testDB";
         String collectionName = "testCollection";
 
@@ -50,7 +50,7 @@ public class IndexingManagerTest {
         String databaseName = "testDB";
         String collectionName = "testCollection";
         String documentId = "doc1";
-        int index = 1;
+        int index = 0;
 
         indexingManager.createCollectionIndex(databaseName, collectionName);
         indexingManager.insertDocumentIntoCollectionIndex(databaseName, collectionName, documentId);
@@ -70,12 +70,11 @@ public class IndexingManagerTest {
         indexingManager.insertDocumentIntoCollectionIndex(databaseName, collectionName, documentId);
         indexingManager.deleteDocumentFromCollectionIndex(databaseName, collectionName, documentId);
 
-        Integer result = indexingManager.searchInCollectionIndex(databaseName, collectionName, documentId);
-        assertNull(result);
+        assertThrows(ResourceNotFoundException.class, () -> indexingManager.searchInCollectionIndex(databaseName, collectionName, documentId));
     }
 
     @Test
-    public void createPropertyIndex_createsNewPropertyIndex_whenPropertyIndexDoesNotExist() {
+    public void createPropertyIndex_createsNewPropertyIndex_whenPropertyIndexDoesNotExist() throws ResourceNotFoundException {
         String databaseName = "testDB";
         String collectionName = "testCollection";
         String propertyName = "property1";
@@ -96,7 +95,7 @@ public class IndexingManagerTest {
     }
 
     @Test
-    public void insertIntoPropertyIndex_insertsNewEntry_whenEntryDoesNotExist() {
+    public void insertIntoPropertyIndex_insertsNewEntry_whenEntryDoesNotExist() throws ResourceNotFoundException {
         String databaseName = "testDB";
         String collectionName = "testCollection";
         String propertyName = "property1";
@@ -111,7 +110,7 @@ public class IndexingManagerTest {
     }
 
     @Test
-    public void deleteFromPropertyIndex_deletesEntry_whenEntryExists() {
+    public void deleteFromPropertyIndex_deletesEntry_whenEntryExists() throws ResourceNotFoundException {
         String databaseName = "testDB";
         String collectionName = "testCollection";
         String propertyName = "property1";
@@ -128,12 +127,12 @@ public class IndexingManagerTest {
     //******************** Loading Tests ************************
 
     @Test
-    public void loadAllIndexes_loadsIndexes_whenIndexesExistOnDisk() {
+    public void loadAllIndexes_loadsIndexes_whenIndexesExistOnDisk() throws ResourceNotFoundException {
         String databaseName = "testDB";
         String collectionName = "collection1";
         String propertyName = "property1";
         String documentId = "doc1";
-        int collectionIndexValue = 1;
+        int collectionIndexValue = 0;
         String propertyIndexValue = "value1";
 
         // Create and populate indexes
@@ -156,7 +155,7 @@ public class IndexingManagerTest {
     }
 
     @Test
-    public void loadCollectionIndex_loadsIndex_whenIndexExistsOnDisk() {
+    public void loadCollectionIndex_loadsIndex_whenIndexExistsOnDisk() throws ResourceNotFoundException {
         String databaseName = "testDB";
         String collectionName = "collection1";
         File indexFile = Mockito.mock(File.class);
@@ -176,7 +175,7 @@ public class IndexingManagerTest {
     }
 
     @Test
-    public void loadPropertyIndex_doesNothing_whenIndexDoesNotExistOnDisk() {
+    public void loadPropertyIndex_doesNothing_whenIndexDoesNotExistOnDisk() throws ResourceNotFoundException {
         String databaseName = "testDB";
         String collectionName = "collection1";
         String propertyName = "property1";

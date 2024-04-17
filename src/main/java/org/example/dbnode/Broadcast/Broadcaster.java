@@ -1,5 +1,6 @@
 package org.example.dbnode.Broadcast;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.log4j.Log4j2;
 import org.example.dbnode.Model.NodeInfo;
 import org.example.dbnode.Model.Request;
@@ -16,7 +17,7 @@ public class Broadcaster {
     private final static int NODE_ID = NodeInfo.getInstance().getNodeId();
     public static void broadcast(Request request) {
         request.addHeader("X-Broadcast", "true");
-        HttpEntity<Map<String, Object>> requestEntity = request.getRequestEntity();
+        HttpEntity<Object> requestEntity = request.getRequestEntity();
         HttpMethod method = request.getMethod();
         RestTemplate restTemplate = new RestTemplate();
 

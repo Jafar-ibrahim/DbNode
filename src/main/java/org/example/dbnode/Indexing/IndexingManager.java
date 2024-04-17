@@ -26,8 +26,14 @@ public class IndexingManager {
 
     private IndexingManager() {
         this.fileService = FileService.getInstance();
+    }
+    public void init() {
         DatabaseRegistry databaseRegistry = DatabaseRegistry.getInstance();
         List<String> allDatabases = databaseRegistry.readDatabases();
+        if (allDatabases.isEmpty()) {
+            log.warn("No databases found, skipping index loading.");
+            return;
+        }
         for (String dbName : allDatabases) {
             loadAllIndexes(dbName);
         }
@@ -46,16 +52,16 @@ public class IndexingManager {
             fileService.createCollectionIndexFile(databaseName, collectionName);
         }
     }
-    public CollectionIndex getCollectionIndex(String databaseName, String collectionName) {
+    public CollectionIndex getCollectionIndex(String databaseName, String collectionName) throws ResourceNotFoundException {
         String key = getCollectionIndexKey(databaseName, collectionName);
         CollectionIndex collectionIndex = collectionsIndexMap.get(key);
         if (collectionIndex == null) {
-            throw new IllegalArgumentException("Index does not exist.");
+            throw new ResourceNotFoundException("Collection Index");
         }
         return collectionIndex;
     }
 
-    public void insertDocumentIntoCollectionIndex(String databaseName , String collectionName, String documentId) {
+    public void insertDocumentIntoCollectionIndex(String databaseName , String collectionName, String documentId) throws ResourceNotFoundException {
         CollectionIndex collectionIndex = getCollectionIndex(databaseName,collectionName);
         Integer existingValue = collectionIndex.search(documentId);
         if (existingValue == null) {
@@ -68,7 +74,7 @@ public class IndexingManager {
         }
     }
 
-    public void deleteDocumentFromCollectionIndex(String databaseName, String collectionName, String documentId) {
+    public void deleteDocumentFromCollectionIndex(String databaseName, String collectionName, String documentId) throws ResourceNotFoundException {
         CollectionIndex collectionIndex = getCollectionIndex(databaseName,collectionName);
         Integer deletedIndex = collectionIndex.search(documentId);
 
@@ -134,11 +140,11 @@ public class IndexingManager {
         }
     }
 
-    public PropertyIndex getPropertyIndex(String databaseName,String collectionName, String propertyName) {
+    public PropertyIndex getPropertyIndex(String databaseName,String collectionName, String propertyName) throws ResourceNotFoundException {
         String propertyIndexKey = getPropertyIndexKey(databaseName, collectionName, propertyName);
         PropertyIndex index = propertyIndexMap.get(propertyIndexKey);
         if (index == null) {
-            throw new IllegalArgumentException("Index does not exist.");
+            throw new ResourceNotFoundException("Property Index");
         }
         return index;
     }
@@ -159,20 +165,20 @@ public class IndexingManager {
             log.error("Entry already exists in property index for collection: " + collectionName + " property: " + propertyName);
         }
     }
-    public String searchInPropertyIndex(String databaseName,String collectionName, String propertyName, String documentId) {
+    public String searchInPropertyIndex(String databaseName,String collectionName, String propertyName, String documentId) throws ResourceNotFoundException {
         String propertyIndexKey = getPropertyIndexKey(databaseName, collectionName, propertyName);
         PropertyIndex propertyIndex = propertyIndexMap.get(propertyIndexKey);
         if (propertyIndex == null) {
-            throw new IllegalArgumentException("Property Index does not exist");
+            throw new ResourceNotFoundException("Property Index");
         }
         return propertyIndex.search(documentId);
     }
-    public void deleteFromPropertyIndex(String databaseName,String collectionName, String propertyName, String documentId) {
+    public void deleteFromPropertyIndex(String databaseName,String collectionName, String propertyName, String documentId) throws ResourceNotFoundException {
         String propertyIndexKey = getPropertyIndexKey(databaseName, collectionName, propertyName);
         PropertyIndex propertyIndex = propertyIndexMap.get(propertyIndexKey);
         if (propertyIndex == null) {
             log.error("Property Index does not exist.");
-            throw new IllegalArgumentException("Property Index does not exist.");
+            throw new ResourceNotFoundException("Property Index");
         }
         propertyIndex.delete(documentId);
         fileService.rewritePropertyIndexFile(fileService.getPropertyIndexFile(databaseName, collectionName, propertyName)
@@ -256,7 +262,7 @@ public class IndexingManager {
         String key = getCollectionIndexKey(databaseName, collectionName);
         return collectionsIndexMap.containsKey(key);
     }
-    public boolean documentExistsInCollectionIndex(String databaseName,String collectionName, String documentId) {
+    public boolean documentExistsInCollectionIndex(String databaseName,String collectionName, String documentId) throws ResourceNotFoundException {
         return getCollectionIndex(databaseName,collectionName).search(documentId) != null;
     }
 

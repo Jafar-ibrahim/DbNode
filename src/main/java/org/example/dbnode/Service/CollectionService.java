@@ -6,6 +6,7 @@ import org.example.dbnode.DatabaseDiskCRUD;
 import org.example.dbnode.Exception.OperationFailedException;
 import org.example.dbnode.Exception.ResourceAlreadyExistsException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
+import org.example.dbnode.Model.DatabaseRegistry;
 import org.example.dbnode.Model.Schema;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -16,10 +17,12 @@ import java.util.List;
 @Service
 public class CollectionService {
     private final DatabaseDiskCRUD databaseDiskCRUD;
+    private final DatabaseRegistry databaseRegistry;
 
     @Autowired
     public CollectionService(DatabaseDiskCRUD databaseDiskCRUD) {
         this.databaseDiskCRUD = databaseDiskCRUD;
+        databaseRegistry = DatabaseRegistry.getInstance();
     }
 
     public Schema getCollectionSchema(String databaseName, String collectionName) throws ResourceNotFoundException {
@@ -29,12 +32,14 @@ public class CollectionService {
 
     public void createCollection(String databaseName, String collectionName, JsonNode jsonSchema) throws ResourceAlreadyExistsException, IOException, ResourceNotFoundException {
         log.info("creating collection: " + collectionName + " in database: " + databaseName);
+        databaseRegistry.addCollection(databaseName, collectionName, jsonSchema);
         databaseDiskCRUD.createCollectionFromJsonSchema(databaseName, collectionName, jsonSchema);
     }
 
     public void deleteCollection(String databaseName, String collectionName) throws ResourceNotFoundException, IOException, OperationFailedException {
         log.info("deleting collection: " + collectionName + " from database: " + databaseName);
         databaseDiskCRUD.deleteCollection(databaseName, collectionName);
+        databaseRegistry.deleteCollection(databaseName, collectionName);
     }
 
     public List<String> readCollections(String databaseName) {

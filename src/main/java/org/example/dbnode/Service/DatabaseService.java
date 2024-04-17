@@ -17,16 +17,15 @@ public class DatabaseService {
     private final DatabaseDiskCRUD databaseDiskCRUD;
     private final DatabaseRegistry databaseRegistry;
 
-    @Autowired
-    public DatabaseService(DatabaseDiskCRUD databaseDiskCRUD, DatabaseRegistry databaseRegistry) {
-        this.databaseDiskCRUD = databaseDiskCRUD;
-        this.databaseRegistry = databaseRegistry;
+    public DatabaseService() {
+        this.databaseDiskCRUD = DatabaseDiskCRUD.getInstance();
+        this.databaseRegistry = DatabaseRegistry.getInstance();
     }
 
     public void createDatabase(String databaseName) throws ResourceAlreadyExistsException, ResourceNotFoundException {
         log.info("creating database: " + databaseName);
-        databaseDiskCRUD.createDatabase(databaseName);
         databaseRegistry.addDatabase(databaseName);
+        databaseDiskCRUD.createDatabase(databaseName);
     }
 
     public void deleteDatabase(String databaseName) throws IOException, ResourceNotFoundException {

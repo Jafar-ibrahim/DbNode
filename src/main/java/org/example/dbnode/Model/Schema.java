@@ -51,7 +51,6 @@ public class Schema {
     public static Schema of(String jsonSchema) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         JsonNode schemaNode = mapper.readValue(jsonSchema, JsonNode.class);
-
         String type = schemaNode.get("type").asText();
 
         Map<String, String> properties = new HashMap<>();
@@ -67,6 +66,14 @@ public class Schema {
         String[] required = requiredList.toArray(new String[0]);
 
         return new Schema(type, properties, required);
+    }
+
+    public static void main(String[] args) throws IOException {
+        String schema = Schema.fromClass(TestModel.class).toString();
+        System.out.println(schema);
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode schemaNode = mapper.readValue(schema, JsonNode.class);
+        System.out.println(schemaNode.get("type"));
     }
 
     /*public boolean validateDocument(ObjectNode jsonNode) {
@@ -90,10 +97,7 @@ public class Schema {
         }
     }*/
     public boolean validateDocument(ObjectNode jsonToValidate) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        // this line will generate JSON schema from your class
         JsonNode schemaNode = this.toJson();
-        // validate it against the schema
         Set<ValidationMessage> validationMessages = JsonSchemaFactory.getInstance().getSchema(schemaNode).validate(jsonToValidate);
         return validationMessages.isEmpty();
     }

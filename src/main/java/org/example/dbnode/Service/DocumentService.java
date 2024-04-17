@@ -8,16 +8,16 @@ import org.example.dbnode.Exception.OperationFailedException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
 import org.example.dbnode.Exception.SchemaMismatchException;
 import org.example.dbnode.Exception.VersionMismatchException;
-import org.example.dbnode.Indexing.IndexingManager;
 import org.example.dbnode.Model.Document;
 import org.example.dbnode.Model.Schema;
-import org.example.dbnode.Util.DataTypeCaster;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+
 @Service
 @Log4j2
 public class DocumentService {
@@ -30,15 +30,16 @@ public class DocumentService {
         this.collectionService = collectionService;
     }
 
-    public Document addDocumentToCollection(String databaseName, String collectionName, ObjectNode documentJson) throws OperationFailedException, IOException, ResourceNotFoundException, SchemaMismatchException {
+    public Document createDocument(String databaseName, String collectionName, ObjectNode documentJson,Optional<String> documentIdOpt) throws OperationFailedException, IOException, ResourceNotFoundException, SchemaMismatchException {
         log.info("adding document to collection: " + collectionName + " in database: " + databaseName);
         Document document = new Document(documentJson);
         Schema schema = collectionService.getCollectionSchema(databaseName, collectionName);
         if (!schema.validateDocument(documentJson)) {
             throw new SchemaMismatchException();
         }
+        String documentIdString = documentIdOpt.orElse(UUID.randomUUID().toString());
         // This method contains Document Indexing implicitly
-        return databaseDiskCRUD.addDocumentToCollection(databaseName, collectionName, document);
+        return databaseDiskCRUD.createDocument(databaseName, collectionName, document,documentIdString);
     }
 
     public void deleteDocument(String databaseName, String collectionName, String documentId) throws OperationFailedException, ResourceNotFoundException {
@@ -46,13 +47,13 @@ public class DocumentService {
         databaseDiskCRUD.deleteDocumentFromCollection(databaseName, collectionName, documentId);
     }
 
-    public void updateDocumentProperty(String databaseName, String collectionName, String documentId, Long expectedVersion, String propertyName, Object newValue) throws OperationFailedException, ResourceNotFoundException, VersionMismatchException {
-        String newValueCasted = DataTypeCaster.getInstance().castToDataType(newValue.toString(), databaseName, collectionName, propertyName).toString();
-        log.info("searching for " + propertyName + " property in document: " + documentId + " in collection: " + collectionName + " in database: " + databaseName);
-        databaseDiskCRUD.updateDocumentProperty(databaseName, collectionName, documentId, expectedVersion, propertyName, newValueCasted);
+    public void updateDocument(String databaseName, String collectionName, String documentId,ObjectNode updatedProperties) throws OperationFailedException, ResourceNotFoundException, VersionMismatchException {
+        //String newValueCasted = DataTypeCaster.getInstance().castToDataType(newValue.toString(), databaseName, collectionName, propertyName).toString();
+        log.info("updating document: " + documentId + " in collection: " + collectionName + " in database: " + databaseName);
+        databaseDiskCRUD.updateDocument(databaseName, collectionName, documentId, updatedProperties);
     }
 
-    public String readDocumentProperty(String databaseName, String collectionName, String documentId, String propertyName) {
+    public String readDocumentProperty(String databaseName, String collectionName, String documentId, String propertyName) throws ResourceNotFoundException {
         log.info("reading " + propertyName + " property from document: " + documentId + " in collection: " + collectionName + " in database: " + databaseName);
         return databaseDiskCRUD.readDocumentProperty(databaseName, collectionName, documentId, propertyName);
     }
@@ -62,7 +63,7 @@ public class DocumentService {
         return databaseDiskCRUD.fetchDocumentFromDatabase(databaseName, collectionName, documentId);
     }
 
-    public List<JsonNode> fetchAllDocumentsFromCollection(String databaseName, String collectionName){
+    public List<JsonNode> fetchAllDocumentsFromCollection(String databaseName, String collectionName) throws ResourceNotFoundException {
         log.info("fetching all documents from collection: " + collectionName + " in database: " + databaseName);
         return databaseDiskCRUD.fetchAllDocumentsFromCollection(databaseName, collectionName);
     }

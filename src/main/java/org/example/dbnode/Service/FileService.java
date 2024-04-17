@@ -102,8 +102,11 @@ public final class FileService {
     public boolean deleteFile(File file){
         return file.delete();
     }
-    public ArrayNode getCollectionDocuments(String databaseName, String collectionName) {
+    public ArrayNode getCollectionDocuments(String databaseName, String collectionName) throws ResourceNotFoundException {
         File collectionFile = getCollectionFile(databaseName, collectionName);
+        if (!fileExists(collectionFile.getPath())) {
+            throw new ResourceNotFoundException("Collection");
+        }
         return readJsonArrayFile(collectionFile);
     }
 
@@ -132,7 +135,7 @@ public final class FileService {
                 e.printStackTrace();
                 log.error("Failed to rewrite index file");
             }
-        } else if (fileExists(file.getPath())) {
+        }else if (fileExists(file.getPath())) {
             file.delete();
         }
     }
@@ -207,7 +210,11 @@ public final class FileService {
         ObjectMapper mapper = new ObjectMapper();
         try (RandomAccessFile file = new RandomAccessFile(collectionFile, "rw")) {
             file.setLength(0);
-            mapper.writerWithDefaultPrettyPrinter().writeValue(file, jsonArray);
+            if (!jsonArray.isEmpty()) {
+                mapper.writerWithDefaultPrettyPrinter().writeValue(file, jsonArray);
+            }else {
+                file.writeBytes("[]");
+            }
         } catch (IOException e) {
             e.printStackTrace();
             log.error("Failed to rewrite collection file");
@@ -298,8 +305,11 @@ public final class FileService {
         try {
             Path filePath = Paths.get(path);
             Files.createDirectories(filePath.getParent());
-            List<String> lines = Files.readAllLines(filePath);
-            lines.removeIf(line -> line.startsWith(key.toString() + ","));
+            List<String> lines = new ArrayList<>();
+            if (Files.exists(filePath)) {
+                lines = Files.readAllLines(filePath);
+                lines.removeIf(line -> line.startsWith(key.toString() + ","));
+            }
             lines.add(key + "," + value);
             Files.write(filePath, lines);
         } catch (IOException e) {

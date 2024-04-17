@@ -1,6 +1,8 @@
 package org.example.dbnode.Controller;
 
+import lombok.extern.log4j.Log4j2;
 import org.example.dbnode.Broadcast.Broadcaster;
+import org.example.dbnode.Exception.VersionMismatchException;
 import org.example.dbnode.Model.Request;
 import org.example.dbnode.Exception.ResourceAlreadyExistsException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.List;
+@Log4j2
 @EnableMethodSecurity(securedEnabled = true)
 @RestController
 @RequestMapping("/api/databases")
@@ -36,9 +39,12 @@ public class DatabaseController {
     public ResponseEntity<String> createDatabase(@PathVariable("db_name") String dbName,
                                                  @RequestHeader(value = "X-Broadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
                                                  @RequestHeader("username") String username,
-                                                 @RequestHeader("password") String password) throws ResourceAlreadyExistsException, ResourceNotFoundException {
+                                                 @RequestHeader("password") String password) throws ResourceAlreadyExistsException, ResourceNotFoundException, VersionMismatchException {
 
 
+        if(isBroadcasted){
+            log.info("Received broadcast request to create database: ("+dbName+")");
+        }
         databaseService.createDatabase(dbName);
         if (!isBroadcasted){
             Broadcaster.broadcast(
@@ -56,6 +62,9 @@ public class DatabaseController {
                                                  @RequestHeader("username") String username,
                                                  @RequestHeader("password") String password) throws IOException, ResourceNotFoundException {
 
+        if(isBroadcasted){
+            log.info("Received broadcast request to delete database: ("+dbName+")");
+        }
         databaseService.deleteDatabase(dbName);
         if (!isBroadcasted){
             Broadcaster.broadcast(

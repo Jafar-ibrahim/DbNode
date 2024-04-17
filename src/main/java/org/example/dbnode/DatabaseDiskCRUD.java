@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.log4j.Log4j2;
 import org.example.dbnode.Exception.*;
 import org.example.dbnode.Indexing.IndexingManager;
-import org.example.dbnode.Model.DatabaseRegistry;
 import org.example.dbnode.Model.Document;
 import org.example.dbnode.Model.Schema;
 import org.example.dbnode.Service.FileService;
@@ -60,6 +59,10 @@ public class DatabaseDiskCRUD {
                 log.error("Database creation failed : database already exists");
                 throw new ResourceAlreadyExistsException("Database");
             }
+        } catch (Exception e) {
+            // If an exception is thrown during document creation, remove the lock
+            locksManager.deleteDatabaseLock(databaseName);
+            throw e;
         }finally {
             databaseLock.unlock();
         }
@@ -135,6 +138,10 @@ public class DatabaseDiskCRUD {
             // index the collection
             indexingManager.createCollectionIndex(databaseName, collectionName);
             return schemaFile;
+        } catch (Exception e) {
+            // If an exception is thrown during creation, remove the lock
+            locksManager.deleteCollectionLock(databaseName, collectionName);
+            throw e;
         }finally {
             collectionLock.unlock();
         }
@@ -189,8 +196,7 @@ public class DatabaseDiskCRUD {
         return collectionNames;
     }
 
-    public Document addDocumentToCollection(String databaseName, String collectionName, Document document) throws IOException, OperationFailedException, ResourceNotFoundException {
-        String documentId = UUID.randomUUID().toString();
+    public Document createDocument(String databaseName, String collectionName, Document document , String documentId) throws IOException, OperationFailedException, ResourceNotFoundException {
         ReentrantLock collectionLock;
         ReentrantLock documentLock;
 
@@ -227,6 +233,10 @@ public class DatabaseDiskCRUD {
 
             log.info("Document with id " + document.getId() + " added to collection " + collectionName);
             return document;
+        } catch (Exception e) {
+            // If an exception is thrown during document creation, remove the lock
+            locksManager.deleteDocumentLock(databaseName, collectionName, documentId);
+            throw e;
         }finally {
             collectionLock.unlock();
             documentLock.unlock();
@@ -269,21 +279,21 @@ public class DatabaseDiskCRUD {
         log.info("Deleted document and its related indexes from collection successfully");
     }
 
-    public void updateDocumentProperty(String databaseName,
-                                       String collectionName,
-                                       String documentId,
-                                       Long expectedVersion,
-                                       String propertyName, String newValue) throws OperationFailedException, ResourceNotFoundException, VersionMismatchException {
+    public void updateDocument(String databaseName,
+                               String collectionName,
+                               String documentId,
+                               ObjectNode updatedProperties) throws OperationFailedException, ResourceNotFoundException, VersionMismatchException {
 
         Document document;
         Optional<Document> documentOptional = fetchDocumentFromDatabase(databaseName, collectionName, documentId);
         if (documentOptional.isEmpty()) {
             throw new ResourceNotFoundException("Document with ID " + documentId + " in collection " + collectionName);
-        }else {
+        } else {
             document = documentOptional.get();
         }
+
         ReentrantLock collectionLock = locksManager.getCollectionLock(databaseName, collectionName),
-                      documentLock = locksManager.getDocumentLock(databaseName, collectionName, documentId);
+                documentLock = locksManager.getDocumentLock(databaseName, collectionName, documentId);
 
         ObjectMapper mapper = new ObjectMapper();
         ArrayNode jsonArray = fileService.getCollectionDocuments(databaseName, collectionName);
@@ -292,8 +302,9 @@ public class DatabaseDiskCRUD {
         int index = getDocumentIndex(databaseName, collectionName, documentId);
         ObjectNode documentData = (ObjectNode) jsonArray.get(index);
 
+        Long expectedVersion = updatedProperties.get("_version").asLong();
         if (documentData.has("_version") && !Objects.equals(document.getVersion(), expectedVersion)) {
-            throw new VersionMismatchException("update document property");
+            throw new VersionMismatchException();
         }
 
         documentLock.lock();
@@ -301,26 +312,36 @@ public class DatabaseDiskCRUD {
         try {
             fileService.incrementDocumentVersion(documentData);
 
-            JsonNode jsonValue = mapper.valueToTree(newValue);
-            documentData.set(propertyName, jsonValue);
+            Iterator<Map.Entry<String, JsonNode>> fields = updatedProperties.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                String propertyName = field.getKey();
+
+                // For security measures, do not allow updating _id and _version fields
+                if (propertyName.equals("_id") || propertyName.equals("_version")) {
+                    continue;
+                }
+
+                String newValue = field.getValue().asText();
+
+                documentData.set(propertyName, field.getValue());
+                if (documentData.has(propertyName)) {
+                    indexManager.deleteFromPropertyIndex(databaseName, collectionName, propertyName, documentData.get(propertyName).asText());
+                }
+                indexManager.insertIntoPropertyIndex(databaseName, collectionName, propertyName, newValue, documentId);
+            }
+
             File collectionFile = fileService.getCollectionFile(databaseName, collectionName);
             boolean writeStatus = fileService.writeJsonArrayFile(collectionFile.toPath(), jsonArray);
             if (!writeStatus) {
                 throw new OperationFailedException("update document");
             }
-            if (documentData.has(propertyName)) {
-                indexManager.deleteFromPropertyIndex(databaseName, collectionName, propertyName, documentData.get(propertyName).asText());
-            }
-            indexManager.insertIntoPropertyIndex(databaseName, collectionName, propertyName, newValue.toString(), documentId);
-
-            collectionLock.unlock();
-            documentLock.unlock();
 
             log.info("Document with id " + documentId + " updated successfully in " + collectionName, HttpStatus.ACCEPTED);
         } catch (Exception e) {
             log.error("Error updating document property: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
             throw new OperationFailedException("update document property");
-        }finally {
+        } finally {
             collectionLock.unlock();
             documentLock.unlock();
         }
@@ -329,7 +350,7 @@ public class DatabaseDiskCRUD {
         return IndexingManager.getInstance().searchInCollectionIndex(databaseName, collectionName, documentId);
     }
 
-    public String readDocumentProperty(String databaseName, String collectionName, String documentId, String propertyName) {
+    public String readDocumentProperty(String databaseName, String collectionName, String documentId, String propertyName) throws ResourceNotFoundException {
         return indexingManager.searchInPropertyIndex(databaseName, collectionName, propertyName, documentId);
     }
 
@@ -368,7 +389,7 @@ public class DatabaseDiskCRUD {
             return null;
         }
     }
-    public List<JsonNode> fetchAllDocumentsFromCollection(String databaseName, String collectionName) {
+    public List<JsonNode> fetchAllDocumentsFromCollection(String databaseName, String collectionName) throws ResourceNotFoundException {
         ArrayNode jsonArray = fileService.getCollectionDocuments(databaseName, collectionName);
         List<JsonNode> documents = new ArrayList<>();
         for (JsonNode jsonNode : jsonArray) {

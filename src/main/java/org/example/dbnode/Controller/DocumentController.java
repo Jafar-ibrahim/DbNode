@@ -1,8 +1,9 @@
 package org.example.dbnode.Controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.extern.log4j.Log4j2;
 import org.example.dbnode.Affinity.AffinityBalancer;
 import org.example.dbnode.Affinity.RedirectionService;
 import org.example.dbnode.Broadcast.Broadcaster;
@@ -12,6 +13,7 @@ import org.example.dbnode.Exception.ResourceNotFoundException;
 import org.example.dbnode.Exception.SchemaMismatchException;
 import org.example.dbnode.Exception.VersionMismatchException;
 import org.example.dbnode.Model.Document;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.dbnode.Model.NodeInfo;
 import org.example.dbnode.Service.AuthenticationService;
 import org.example.dbnode.Service.DocumentService;
@@ -26,7 +28,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
-
+@Log4j2
 @EnableMethodSecurity(securedEnabled = true)
 @SuppressWarnings("unused")
 @RestController
@@ -46,61 +48,59 @@ public class DocumentController {
     @PostMapping
     public ResponseEntity<String> createDocument(@PathVariable("db_name") String dbName,
                                                  @PathVariable("collection_name") String collectionName,
-                                                 @RequestParam Object document,
+                                                 @RequestBody ObjectNode documentNode,
                                                  @RequestHeader("username") String username,
                                                  @RequestHeader("password") String password,
                                                  @RequestHeader(value = "X-Broadcast", required = false, defaultValue = "false") Boolean isBroadcasted) throws SchemaMismatchException, OperationFailedException, IOException, ResourceNotFoundException {
-        ObjectNode documentNode;
-        if (document instanceof String) {
-            ObjectMapper mapper = new ObjectMapper();
-            documentNode = mapper.readValue((String) document, ObjectNode.class);
-        } else if (document instanceof ObjectNode) {
-            documentNode = (ObjectNode) document;
-        } else {
-            throw new IllegalArgumentException("Invalid document type");
+
+        if(isBroadcasted){
+            log.info("Received broadcast request to create document in collection: ("+collectionName+") in database: ("+dbName+")");
         }
-        documentService.addDocumentToCollection(dbName, collectionName, documentNode);
+
+        Optional<String> documentId = Optional.ofNullable(documentNode.get("_id")).map(JsonNode::asText);
+        Document documentObj = documentService.createDocument(dbName, collectionName, documentNode,documentId);
         if (!isBroadcasted){
             Broadcaster.broadcast(
                     new Request()
                             .setMethod(HttpMethod.POST)
                             .addAuthHeaders(username, password)
-                            .addParam("document", document)
+                            .setBody(documentObj.getContent())
                             .setUrl("http://nodeNODE_ID:9000/api/databases/"+dbName+"/collections/"+collectionName+"/documents"));
         }
-        return new ResponseEntity<>("Document created successfully", HttpStatus.CREATED);
+        return new ResponseEntity<>("Document created successfully with Id : "+documentObj.getId(), HttpStatus.CREATED);
     }
     
     @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
-    @PutMapping("/{doc_id}/{property_name}")
+    @PutMapping("/{doc_id}")
     public ResponseEntity<String> updateDocument(@PathVariable("db_name") String dbName,
                                                  @PathVariable("collection_name") String collectionName,
                                                  @PathVariable("doc_id") String documentId,
-                                                 @PathVariable("property_name") String propertyName,
-                                                 @RequestParam("newPropertyValue") Object newPropertyValue,
-                                                 @RequestParam("expectedVersion") Long expectedVersion,
+                                                 @RequestBody ObjectNode updatedProperties,
                                                  @RequestHeader(value = "X-Broadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
                                                  @RequestHeader("username") String username,
                                                  @RequestHeader("password") String password) throws OperationFailedException, ResourceNotFoundException, VersionMismatchException {
 
-
+        if(isBroadcasted){
+            log.info("Received broadcast request to update document with Id : ("+documentId+") in collection: ("+collectionName+") in database: ("+dbName+")");
+        }
         int nodeWithAffinity = AffinityBalancer.getInstance().getNodeWithAffinityId(documentId);
-        boolean hasAffinity = nodeWithAffinity == NodeInfo.getInstance().getNodeId();
+        int currentNode = NodeInfo.getInstance().getNodeId();
+        boolean hasAffinity = nodeWithAffinity == currentNode;
         Request updateRequest = new Request()
                 .setMethod(HttpMethod.PUT)
                 .addAuthHeaders(username, password)
-                .addParam("newPropertyValue", newPropertyValue)
-                .addParam("expectedVersion", expectedVersion)
-                .setUrl("http://nodeNODE_ID:9000/api/databases/" + dbName + "/collections/" + collectionName + "/documents/" + documentId + "/" + propertyName);
+                .setBody(updatedProperties)
+                .setUrl("http://nodeNODE_ID:9000/api/databases/" + dbName + "/collections/" + collectionName + "/documents/" + documentId);
 
         if (!hasAffinity && !isBroadcasted){
+            log.info("Current node (node "+currentNode+") does not have affinity of the document, " +
+                    "redirecting request to node with affinity (node "+nodeWithAffinity+")");
             return RedirectionService.redirect(updateRequest, nodeWithAffinity);
         }
-        documentService.updateDocumentProperty(dbName, collectionName, documentId,expectedVersion ,propertyName, newPropertyValue);
+        documentService.updateDocument(dbName, collectionName, documentId,updatedProperties);
         if(!isBroadcasted){
             Broadcaster.broadcast(updateRequest);
         }
-
         return new ResponseEntity<>("Document updated successfully", HttpStatus.OK);
     }
     @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
@@ -112,14 +112,20 @@ public class DocumentController {
                                                  @RequestHeader("username") String username,
                                                  @RequestHeader("password") String password) throws OperationFailedException, ResourceNotFoundException {
 
+        if(isBroadcasted){
+            log.info("Received broadcast request to delete document from collection: ("+collectionName+") in database: ("+dbName+")");
+        }
         int nodeWithAffinity = AffinityBalancer.getInstance().getNodeWithAffinityId(documentId);
-        boolean hasAffinity = nodeWithAffinity == NodeInfo.getInstance().getNodeId();
+        int currentNode = NodeInfo.getInstance().getNodeId();
+        boolean hasAffinity = nodeWithAffinity == currentNode;
         Request deleteRequest = new Request()
                 .setMethod(HttpMethod.DELETE)
                 .addAuthHeaders(username, password)
                 .setUrl("http://nodeNODE_ID:9000/api/databases/"+dbName+"/collections/"+collectionName+"/documents/"+documentId);
 
         if (!hasAffinity && !isBroadcasted){
+            log.info("Current node (node "+currentNode+") does not have affinity of the document, " +
+                    "redirecting request to node with affinity (node "+nodeWithAffinity+")");
             return RedirectionService.redirect(deleteRequest, nodeWithAffinity);
         }
         documentService.deleteDocument(dbName, collectionName, documentId);
@@ -148,18 +154,22 @@ public class DocumentController {
     public ResponseEntity<String> fetchCollectionDocuments(@PathVariable("db_name") String dbName,
                                                            @PathVariable("collection_name") String collectionName,
                                                            @RequestHeader("username") String username,
-                                                           @RequestHeader("password") String password) {
+                                                           @RequestHeader("password") String password) throws JsonProcessingException, ResourceNotFoundException {
 
         List<JsonNode> documents = documentService.fetchAllDocumentsFromCollection(dbName, collectionName);
-        return new ResponseEntity<>(documents.toString(), HttpStatus.OK);
 
+        ObjectMapper mapper = new ObjectMapper();
+        String prettyDocuments = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(documents);
+        return new ResponseEntity<>(prettyDocuments, HttpStatus.OK);
     }
     @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
     @GetMapping("/{doc_id}/{propertyName}")
     public ResponseEntity<String> readDocumentProperty(@PathVariable("db_name") String dbName,
                                                        @PathVariable("collection_name") String collectionName,
                                                        @PathVariable("doc_id") String documentId,
-                                                       @PathVariable String propertyName){
+                                                       @PathVariable String propertyName,
+                                                       @RequestHeader("username") String username,
+                                                       @RequestHeader("password") String password) throws ResourceNotFoundException {
         String propertyValue = documentService.readDocumentProperty(dbName, collectionName, documentId, propertyName);
         return new ResponseEntity<>(propertyValue, HttpStatus.OK);
     }

@@ -49,7 +49,7 @@ public class AuthenticationService {
         return fileService.getAdminByUsername(username).isPresent();
     }
 
-    public boolean customerExists(User user) {
+    public boolean userExists(User user) {
         if (user == null || user.getUsername() == null) {
             return false;
         }

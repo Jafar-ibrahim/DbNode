@@ -1,5 +1,6 @@
 package org.example.dbnode;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.log4j.Log4j2;
 import org.example.dbnode.Exception.*;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.*;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 @Log4j2
@@ -88,10 +90,8 @@ class DatabaseDiskCRUDTest {
         TestModel testModel = new TestModel();
         testModel.setName("Test Name");
         Document document = new Document(testModel.toJson(testModel));
-        Document document2 = new Document(testModel.toJson(testModel));
 
-        document = databaseDiskCRUD.addDocumentToCollection("testDB", "testCollection", document);
-        databaseDiskCRUD.addDocumentToCollection("testDB", "testCollection", document2);
+        document = databaseDiskCRUD.createDocument("testDB", "testCollection", document,UUID.randomUUID().toString());
         assertNotNull(databaseDiskCRUD.fetchDocumentFromDatabase("testDB", "testCollection", document.getId()));
     }
 
@@ -100,7 +100,7 @@ class DatabaseDiskCRUDTest {
         TestModel testModel = new TestModel();
         testModel.setName("Test Name");
         Document document = new Document(testModel.toJson(testModel));
-        assertThrows(ResourceNotFoundException.class, () -> databaseDiskCRUD.addDocumentToCollection("testDB", "nonexistentCollection", document));
+        assertThrows(ResourceNotFoundException.class, () -> databaseDiskCRUD.createDocument("testDB", "nonexistentCollection", document,UUID.randomUUID().toString()));
     }
 
     @Test
@@ -110,7 +110,7 @@ class DatabaseDiskCRUDTest {
         TestModel testModel = new TestModel();
         testModel.setName("Test Name");
         Document document = new Document(testModel.toJson(testModel));
-        document= databaseDiskCRUD.addDocumentToCollection("testDB", "testCollection", document);
+        document= databaseDiskCRUD.createDocument("testDB", "testCollection", document,UUID.randomUUID().toString());
         databaseDiskCRUD.deleteDocumentFromCollection("testDB", "testCollection", document.getId());
         assertEquals(Optional.empty(),databaseDiskCRUD.fetchDocumentFromDatabase("testDB", "testCollection", document.getId()));
     }
@@ -127,8 +127,12 @@ class DatabaseDiskCRUDTest {
         TestModel testModel = new TestModel();
         testModel.setName("Test Name");
         Document document = new Document(testModel.toJson(testModel));
-        document = databaseDiskCRUD.addDocumentToCollection("testDB", "testCollection", document);
-        databaseDiskCRUD.updateDocumentProperty("testDB", "testCollection", document.getId(), document.getVersion(),"name", "testValue");
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode updatedProperties = mapper.createObjectNode();
+        updatedProperties.put("name", "Jafar");
+        updatedProperties.put("_version", 0);
+        document = databaseDiskCRUD.createDocument("testDB", "testCollection", document, UUID.randomUUID().toString());
+        databaseDiskCRUD.updateDocument("testDB", "testCollection", document.getId(),updatedProperties);
         ObjectNode updatedDocument = databaseDiskCRUD.fetchNodeById("testDB", "testCollection", document.getId());
         assertEquals("testValue", updatedDocument.get("testProperty").asText());
     }
@@ -137,7 +141,11 @@ class DatabaseDiskCRUDTest {
     void updateDocumentPropertyInNonexistentCollection() {
         Document document = new Document();
         document.setId("testDoc");
-        assertThrows(ResourceNotFoundException.class, () -> databaseDiskCRUD.updateDocumentProperty("testDB", "nonexistentCollection", document.getId(), document.getVersion(),"testProperty", "testValue"));
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode updatedProperties = mapper.createObjectNode();
+        updatedProperties.put("name", "Jafar");
+        updatedProperties.put("_version", 0);
+        assertThrows(ResourceNotFoundException.class, () -> databaseDiskCRUD.updateDocument("testDB", "nonexistentCollection", document.getId(),updatedProperties));
     }
 
     /*@AfterAll
