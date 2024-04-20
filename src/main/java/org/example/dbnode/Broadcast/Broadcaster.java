@@ -16,7 +16,7 @@ public class Broadcaster {
     private static final int NODES_NO = 4;
     private final static int NODE_ID = NodeInfo.getInstance().getNodeId();
     public static void broadcast(Request request) {
-        request.addHeader("X-Broadcast", "true");
+        request.addHeader("isBroadcast", "true");
         HttpEntity<Object> requestEntity = request.getRequestEntity();
         HttpMethod method = request.getMethod();
         RestTemplate restTemplate = new RestTemplate();

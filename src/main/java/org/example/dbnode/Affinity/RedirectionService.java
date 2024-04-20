@@ -13,7 +13,7 @@ import java.util.Map;
 @Log4j2
 public class RedirectionService {
     public static ResponseEntity<String> redirect(Request request,int nodeId) {
-        request.addHeader("X-Broadcast", "false");
+        request.addHeader("isBroadcast", "false");
         HttpEntity<Object> requestEntity = request.getRequestEntity();
         HttpMethod method = request.getMethod();
         RestTemplate restTemplate = new RestTemplate();

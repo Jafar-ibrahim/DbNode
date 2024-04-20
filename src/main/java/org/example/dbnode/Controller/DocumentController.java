@@ -51,7 +51,7 @@ public class DocumentController {
                                                  @RequestBody ObjectNode documentNode,
                                                  @RequestHeader("username") String username,
                                                  @RequestHeader("password") String password,
-                                                 @RequestHeader(value = "X-Broadcast", required = false, defaultValue = "false") Boolean isBroadcasted) throws SchemaMismatchException, OperationFailedException, IOException, ResourceNotFoundException {
+                                                 @RequestHeader(value = "isBroadcast", required = false, defaultValue = "false") Boolean isBroadcasted) throws SchemaMismatchException, OperationFailedException, IOException, ResourceNotFoundException {
 
         if(isBroadcasted){
             log.info("Received broadcast request to create document in collection: ("+collectionName+") in database: ("+dbName+")");
@@ -77,7 +77,7 @@ public class DocumentController {
                                                  @PathVariable("collection_name") String collectionName,
                                                  @PathVariable("doc_id") String documentId,
                                                  @RequestBody ObjectNode updatedProperties,
-                                                 @RequestHeader(value = "X-Broadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
+                                                 @RequestHeader(value = "isBroadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
                                                  @RequestHeader("username") String username,
                                                  @RequestHeader("password") String password) throws OperationFailedException, ResourceNotFoundException, VersionMismatchException {
 
@@ -110,7 +110,7 @@ public class DocumentController {
     public ResponseEntity<String> deleteDocument(@PathVariable("db_name") String dbName,
                                                  @PathVariable("collection_name") String collectionName,
                                                  @PathVariable("doc_id") String documentId,
-                                                 @RequestHeader(value = "X-Broadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
+                                                 @RequestHeader(value = "isBroadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
                                                  @RequestHeader("username") String username,
                                                  @RequestHeader("password") String password) throws OperationFailedException, ResourceNotFoundException {
 

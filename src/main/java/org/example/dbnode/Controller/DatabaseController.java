@@ -37,7 +37,7 @@ public class DatabaseController {
     @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
     @PostMapping("/{db_name}")
     public ResponseEntity<String> createDatabase(@PathVariable("db_name") String dbName,
-                                                 @RequestHeader(value = "X-Broadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
+                                                 @RequestHeader(value = "isBroadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
                                                  @RequestHeader("username") String username,
                                                  @RequestHeader("password") String password) throws ResourceAlreadyExistsException, ResourceNotFoundException, VersionMismatchException {
 
@@ -58,7 +58,7 @@ public class DatabaseController {
     @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
     @DeleteMapping("/{db_name}")
     public ResponseEntity<String> deleteDatabase(@PathVariable("db_name") String dbName,
-                                                 @RequestHeader(value = "X-Broadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
+                                                 @RequestHeader(value = "isBroadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
                                                  @RequestHeader("username") String username,
                                                  @RequestHeader("password") String password) throws IOException, ResourceNotFoundException {
 

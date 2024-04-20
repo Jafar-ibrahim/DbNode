@@ -40,7 +40,7 @@ public class CollectionController {
     public ResponseEntity<String> createCollection(@PathVariable("db_name") String dbName,
                                                    @PathVariable("collection_name") String collectionName,
                                                    @RequestBody JsonNode schema,
-                                                   @RequestHeader(value = "X-Broadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
+                                                   @RequestHeader(value = "isBroadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
                                                    @RequestHeader("username") String username,
                                                    @RequestHeader("password") String password) throws ResourceAlreadyExistsException, IOException, ResourceNotFoundException {
 
@@ -63,7 +63,7 @@ public class CollectionController {
     @DeleteMapping("/{collection_name}")
     public ResponseEntity<String> deleteCollection(@PathVariable("db_name") String dbName,
                                                    @PathVariable("collection_name") String collectionName,
-                                                   @RequestHeader(value = "X-Broadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
+                                                   @RequestHeader(value = "isBroadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
                                                    @RequestHeader("username") String username,
                                                    @RequestHeader("password") String password) throws OperationFailedException, IOException, ResourceNotFoundException {
 
