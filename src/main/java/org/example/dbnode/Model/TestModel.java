@@ -15,7 +15,7 @@ public class TestModel {
     private String id;
     @JsonProperty(namespace = "name",access = JsonProperty.Access.READ_WRITE, required = true)
     private String name;
-    @JsonIgnore
+    @JsonProperty(namespace = "number",access = JsonProperty.Access.READ_WRITE, required = true)
     private int number;
     public ObjectNode toJson(TestModel model) {
         ObjectMapper mapper = new ObjectMapper();

@@ -28,6 +28,8 @@ public class DatabaseDiskCRUD {
     private final IndexingManager indexingManager;
     private final LocksManager locksManager;
 
+
+
     private static final class InstanceHolder {
         private static final DatabaseDiskCRUD instance = new DatabaseDiskCRUD();
     }
@@ -228,6 +230,7 @@ public class DatabaseDiskCRUD {
                 if (!fieldName.equals("_id") && !fieldName.equals("_version")) {
                     JsonNode fieldValue = finalDocumentData.get(fieldName);
                     indexingManager.insertIntoPropertyIndex(databaseName, collectionName, fieldName, fieldValue.toString(), document.getId());
+                    indexingManager.insertIntoInvertedPropertyIndex(databaseName, collectionName, fieldName, fieldValue.toString(), document.getId());
                 }
             });
 
@@ -291,14 +294,10 @@ public class DatabaseDiskCRUD {
         } else {
             document = documentOptional.get();
         }
-
         ReentrantLock collectionLock = locksManager.getCollectionLock(databaseName, collectionName),
-                documentLock = locksManager.getDocumentLock(databaseName, collectionName, documentId);
+                      documentLock = locksManager.getDocumentLock(databaseName, collectionName, documentId);
 
-        ObjectMapper mapper = new ObjectMapper();
         ArrayNode jsonArray = fileService.getCollectionDocuments(databaseName, collectionName);
-
-        IndexingManager indexManager = IndexingManager.getInstance();
         int index = getDocumentIndex(databaseName, collectionName, documentId);
         ObjectNode documentData = (ObjectNode) jsonArray.get(index);
 
@@ -311,7 +310,6 @@ public class DatabaseDiskCRUD {
         collectionLock.lock();
         try {
             fileService.incrementDocumentVersion(documentData);
-
             Iterator<Map.Entry<String, JsonNode>> fields = updatedProperties.fields();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> field = fields.next();
@@ -323,20 +321,19 @@ public class DatabaseDiskCRUD {
                 }
 
                 String newValue = field.getValue().asText();
-
                 documentData.set(propertyName, field.getValue());
                 if (documentData.has(propertyName)) {
-                    indexManager.deleteFromPropertyIndex(databaseName, collectionName, propertyName, documentData.get(propertyName).asText());
+                    indexingManager.deleteFromPropertyIndex(databaseName, collectionName, propertyName, newValue);
+                    indexingManager.deleteDocumentFromInvertedPropertyIndex(databaseName, collectionName, propertyName,newValue, documentId);
                 }
-                indexManager.insertIntoPropertyIndex(databaseName, collectionName, propertyName, newValue, documentId);
+                indexingManager.insertIntoPropertyIndex(databaseName, collectionName, propertyName, newValue, documentId);
+                indexingManager.insertIntoInvertedPropertyIndex(databaseName, collectionName, propertyName, newValue, documentId);
             }
-
             File collectionFile = fileService.getCollectionFile(databaseName, collectionName);
             boolean writeStatus = fileService.writeJsonArrayFile(collectionFile.toPath(), jsonArray);
             if (!writeStatus) {
                 throw new OperationFailedException("update document");
             }
-
             log.info("Document with id " + documentId + " updated successfully in " + collectionName, HttpStatus.ACCEPTED);
         } catch (Exception e) {
             log.error("Error updating document property: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
@@ -363,7 +360,24 @@ public class DatabaseDiskCRUD {
             log.error("Document with ID " + documentId + " not found in collection " + collectionName);
             return null;
         }
+        assert jsonArray != null;
         return (ObjectNode) jsonArray.get(index);
+    }
+    public List<JsonNode> fetchAllDocumentsByIds(String databaseName, String collectionName, List<String> documentIds) {
+        ArrayNode jsonArray = fileService.readJsonArrayFile(fileService.getCollectionFile(databaseName, collectionName));
+        List<JsonNode> nodes = new ArrayList<>();
+        for (String documentId : documentIds) {
+            int index;
+            try {
+                index = getDocumentIndex(databaseName, collectionName, documentId);
+            } catch (ResourceNotFoundException e) {
+                log.error("Document with ID " + documentId + " not found in collection " + collectionName);
+                continue;
+            }
+            assert jsonArray != null;
+            nodes.add(jsonArray.get(index));
+        }
+        return nodes;
     }
 
     public Optional<Document> fetchDocumentFromDatabase(String databaseName, String collectionName, String documentId){
@@ -384,8 +398,8 @@ public class DatabaseDiskCRUD {
                 throw new ResourceNotFoundException("Schema file");
             }
         } catch (IOException e) {
-            e.printStackTrace();
             log.error("Failed to read schema file");
+            e.printStackTrace();
             return null;
         }
     }
@@ -396,5 +410,9 @@ public class DatabaseDiskCRUD {
             documents.add(jsonNode);
         }
         return documents;
+    }
+    public List<JsonNode> fetchAllDocumentsByPropertyValue(String databaseName, String collectionName, String propertyName, String propertyValue) throws ResourceNotFoundException {
+        List<String> documentIds = indexingManager.searchInInvertedPropertyIndex(databaseName, collectionName, propertyName, propertyValue);
+        return fetchAllDocumentsByIds(databaseName, collectionName, documentIds);
     }
 }

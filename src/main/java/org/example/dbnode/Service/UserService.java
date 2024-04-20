@@ -4,15 +4,18 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.extern.log4j.Log4j2;
+import org.example.dbnode.Enum.Role;
 import org.example.dbnode.Exception.OperationFailedException;
 import org.example.dbnode.Exception.ResourceAlreadyExistsException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
+import org.example.dbnode.Model.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.util.Iterator;
-
+@Log4j2
 @Service
 public class UserService {
 
@@ -39,11 +42,10 @@ public class UserService {
                 throw new ResourceAlreadyExistsException("user");
             }
         }
-        ObjectNode user = mapper.createObjectNode();
-        user.put("username", username);
-        user.put("password", password); //hashing the password
-        usersArray.add(user);
+        User user = new User(username, password, Role.USER);
+        usersArray.add(user.toJson());
         fileService.writeJsonArrayFile(usersFile.toPath(), usersArray);
+        log.info("User added successfully with username: " + username);
     }
 
 
@@ -70,6 +72,7 @@ public class UserService {
             throw new ResourceNotFoundException("User");
         }
         fileService.writeJsonArrayFile(usersFile.toPath(), usersArray);
+        log.info("User with username (" + username + ") deleted successfully");
     }
 
     @SuppressWarnings("unchecked")
@@ -88,13 +91,13 @@ public class UserService {
         for (JsonNode adminObj : adminsArray) {
             ObjectNode admin = (ObjectNode) adminObj;
             if (admin.get("username").asText().equals(username)) {
+                log.error("Admin already exists with username: " + username);
                 throw new ResourceAlreadyExistsException("admin");
             }
         }
-        ObjectNode newAdmin = mapper.createObjectNode();
-        newAdmin.put("username", username);
-        newAdmin.put("password", password);
-        adminsArray.add(newAdmin);
+        User admin = new User(username, password, Role.ADMIN);
+        adminsArray.add(admin.toJson());
         fileService.writeJsonArrayFile(adminsFile.toPath(), adminsArray);
+        log.info("Admin added successfully with username: " + username);
     }
 }

@@ -23,9 +23,10 @@ public class Main {
         TestModel testModel = new TestModel();
         testModel.setId("1");
         testModel.setName("test");
+        testModel.setNumber(1);
         JsonNode schema = Schema.fromClass(TestModel.class);
         ObjectMapper mapper = new ObjectMapper();
-        ObjectWriter writer = mapper.writerWithDefaultPrettyPrinter(); // Key part
+        ObjectWriter writer = mapper.writerWithDefaultPrettyPrinter();
         System.out.println(writer.writeValueAsString(schema));
         ObjectNode testModelNode = (ObjectNode) mapper.readTree(writer.writeValueAsString(testModel));
         System.out.println(testModelNode);

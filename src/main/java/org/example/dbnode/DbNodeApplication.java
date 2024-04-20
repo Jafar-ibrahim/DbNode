@@ -1,6 +1,7 @@
 package org.example.dbnode;
 
 import lombok.extern.log4j.Log4j2;
+import org.example.dbnode.Exception.ResourceNotFoundException;
 import org.example.dbnode.Indexing.IndexingManager;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -15,7 +16,7 @@ public class DbNodeApplication implements CommandLineRunner {
     }
 
     @Override
-    public void run(String... args){
+    public void run(String... args) throws ResourceNotFoundException {
         log.info("Initializing Indexing Manager");
         IndexingManager.getInstance().init();
     }

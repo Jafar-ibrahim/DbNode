@@ -1,5 +1,7 @@
 package org.example.dbnode.Controller;
 
+import lombok.extern.log4j.Log4j2;
+import org.example.dbnode.Enum.Role;
 import org.example.dbnode.Exception.OperationFailedException;
 import org.example.dbnode.Exception.ResourceAlreadyExistsException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
@@ -8,10 +10,11 @@ import org.example.dbnode.Service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
+@Log4j2
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/users")
 public class UserController {
 
     private final AuthenticationService authenticationService;
@@ -22,34 +25,32 @@ public class UserController {
         this.authenticationService = authenticationService;
         this.userService = userService;
     }
+    @PreAuthorize("@authenticationService.authenticateAdmin(#adminUsername, #adminPassword)")
+    @PostMapping("/{username}")
+    public ResponseEntity<String> addUser(@PathVariable("username") String username,
+                                          @RequestHeader("password") String password,
+                                          @RequestHeader("role") Role role,
+                                          @RequestHeader("adminUsername") String adminUsername,
+                                          @RequestHeader("adminPassword") String adminPassword,
+                                          @RequestHeader(value = "token" ,required = false) String token ) throws OperationFailedException, ResourceAlreadyExistsException {
 
-    @PostMapping("/users")
-    public ResponseEntity<String> addUser(@RequestParam("username") String username,
-                                              @RequestParam("password") String password,
-                                              @RequestHeader("adminUsername") String adminUsername,
-                                              @RequestHeader("adminPassword") String adminPassword) throws OperationFailedException, ResourceAlreadyExistsException {
-        if(!authenticationService.authenticateAdmin(adminUsername, adminPassword)){
-            return new ResponseEntity<>("User is not authorized", HttpStatus.UNAUTHORIZED);
+        log.info("Received request to register a new user with username: " + username+" and role: "+role);
+
+        if (role == Role.ADMIN ) {
+            userService.addAdmin(username, password);
+        }else {
+            userService.addUser(username, password);
         }
-        userService.addUser(username, password);
-        return new ResponseEntity<>("User added successfully", HttpStatus.CREATED);
+        return new ResponseEntity<>("User added successfully with username: " + username+" and role: "+role, HttpStatus.CREATED);
     }
 
-    @DeleteMapping ("/users")
-    public ResponseEntity<String> deleteUser(@RequestParam("username") String username,
+    @PreAuthorize("@authenticationService.authenticateAdmin(#adminUsername, #adminPassword)")
+    @DeleteMapping ("/{username}")
+    public ResponseEntity<String> deleteUser(@PathVariable("username") String username,
                                                  @RequestHeader("adminUsername") String adminUsername,
                                                  @RequestHeader("adminPassword") String adminPassword) throws OperationFailedException, ResourceNotFoundException {
-        if(!authenticationService.authenticateAdmin(adminUsername, adminPassword)){
-            return new ResponseEntity<>("User is not authorized", HttpStatus.UNAUTHORIZED);
-        }
+        log.info("Received request to delete the user with username: " + username);
         userService.deleteUser(username);
-        return new ResponseEntity<>("User deleted successfully", HttpStatus.OK);
-    }
-
-    @PostMapping("/admins")
-    public ResponseEntity<String> addAdmin(@RequestParam("username") String username,
-                                           @RequestParam("password") String password) throws OperationFailedException, ResourceAlreadyExistsException {
-        userService.addAdmin(username, password);
-        return new ResponseEntity<>("Admin added successfully", HttpStatus.CREATED);
+        return new ResponseEntity<>("User with username ("+username+") deleted successfully", HttpStatus.OK);
     }
 }

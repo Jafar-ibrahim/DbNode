@@ -1,4 +1,4 @@
-package org.example.dbnode.Util;
+package org.example.dbnode.Util.DataTypes;
 
 import org.example.dbnode.DatabaseDiskCRUD;
 import org.example.dbnode.Exception.ResourceNotFoundException;
@@ -25,8 +25,8 @@ public class DataTypeCaster {
         String dataType = getDataType(databaseName,collectionName, propertyName);
         return switch (Objects.requireNonNull(dataType).toUpperCase()) {
             case "STRING" -> value;
-            case "LONG" -> Long.parseLong(value);
-            case "DOUBLE" -> Double.parseDouble(value);
+            case "INTEGER" -> Integer.parseInt(value);
+            case "NUMBER" -> Double.parseDouble(value);
             case "BOOLEAN" -> Boolean.parseBoolean(value);
             default -> null;
         };
@@ -36,7 +36,7 @@ public class DataTypeCaster {
         Schema schema = databaseDiskCRUD.getCollectionSchema(databaseName, collectionName);
         String dataType = schema.getProperties().get(property);
         if (dataType == null) {
-            throw new ResourceNotFoundException("Property " + property + " in collection " + collectionName);
+            throw new IllegalArgumentException("Property not found in schema");
         }
         return dataType;
     }

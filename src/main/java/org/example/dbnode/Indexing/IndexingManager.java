@@ -6,28 +6,30 @@ import lombok.extern.log4j.Log4j2;
 import org.example.dbnode.DatabaseDiskCRUD;
 import org.example.dbnode.Exception.ResourceNotFoundException;
 import org.example.dbnode.Model.DatabaseRegistry;
+import org.example.dbnode.Model.Document;
 import org.example.dbnode.Model.Schema;
 import org.example.dbnode.Service.FileService;
+import org.example.dbnode.Util.DataTypes.DataTypeCaster;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 @Log4j2
+
 public class IndexingManager {
 
     private final Map<String, CollectionIndex> collectionsIndexMap = new ConcurrentHashMap<>();
     private final Map<String, PropertyIndex> propertyIndexMap = new ConcurrentHashMap<>();
+    private final Map<String, InvertedPropertyIndex> invertedPropertyIndexMap = new ConcurrentHashMap<>();
+
     private final FileService fileService;
 
     private IndexingManager() {
         this.fileService = FileService.getInstance();
     }
-    public void init() {
+    public void init() throws ResourceNotFoundException {
         DatabaseRegistry databaseRegistry = DatabaseRegistry.getInstance();
         List<String> allDatabases = databaseRegistry.readDatabases();
         if (allDatabases.isEmpty()) {
@@ -140,6 +142,22 @@ public class IndexingManager {
         }
     }
 
+    public void createInvertedPropertyIndex(String databaseName,String collectionName, String propertyName) throws ResourceNotFoundException {
+        String propertyIndexKey = getPropertyIndexKey(databaseName, collectionName, propertyName);
+        if (!invertedPropertyIndexMap.containsKey(propertyIndexKey)) {
+            String propertyDataType = DataTypeCaster.getInstance().getDataType(databaseName, collectionName, propertyName);
+            InvertedPropertyIndex index;
+            switch (Objects.requireNonNull(propertyDataType).toUpperCase()) {
+                case "STRING" -> index = new InvertedPropertyIndex<String>();
+                case "INTEGER" -> index = new InvertedPropertyIndex<Integer>();
+                case "NUMBER" -> index = new InvertedPropertyIndex<Double>();
+                case "BOOLEAN" -> index = new InvertedPropertyIndex<Boolean>();
+                default -> throw new IllegalArgumentException("Invalid data type for property: " + propertyName);
+            }
+            invertedPropertyIndexMap.put(propertyIndexKey, index);
+        }
+    }
+
     public PropertyIndex getPropertyIndex(String databaseName,String collectionName, String propertyName) throws ResourceNotFoundException {
         String propertyIndexKey = getPropertyIndexKey(databaseName, collectionName, propertyName);
         PropertyIndex index = propertyIndexMap.get(propertyIndexKey);
@@ -147,6 +165,15 @@ public class IndexingManager {
             throw new ResourceNotFoundException("Property Index");
         }
         return index;
+    }
+
+    public InvertedPropertyIndex getInvertedPropertyIndex(String databaseName, String collectionName, String propertyName) throws ResourceNotFoundException {
+        String propertyIndexKey = getPropertyIndexKey(databaseName, collectionName, propertyName);
+        InvertedPropertyIndex invertedPropertyIndex = invertedPropertyIndexMap.get(propertyIndexKey);
+        if (invertedPropertyIndex == null) {
+            throw new ResourceNotFoundException("Inverted Property Index");
+        }
+        return invertedPropertyIndex;
     }
 
     public void insertIntoPropertyIndex(String databaseName, String collectionName, String propertyName, String propertyValue, String documentId) {
@@ -165,6 +192,39 @@ public class IndexingManager {
             log.error("Entry already exists in property index for collection: " + collectionName + " property: " + propertyName);
         }
     }
+    @SuppressWarnings("unchecked")
+    public void insertIntoInvertedPropertyIndex(String databaseName, String collectionName, String propertyName, String propertyValue, String documentId) {
+        String propertyIndexKey = getPropertyIndexKey(databaseName, collectionName, propertyName);
+        InvertedPropertyIndex invertedPropertyIndex = invertedPropertyIndexMap.get(propertyIndexKey);
+        if(invertedPropertyIndex == null){
+            try {
+                createInvertedPropertyIndex(databaseName,collectionName,propertyName);
+            } catch (ResourceNotFoundException e) {
+                log.error("Failed to create inverted property index.");
+                return;
+            }
+            invertedPropertyIndex = invertedPropertyIndexMap.get(propertyIndexKey);
+        }
+
+        try {
+            Object propertyValueCasted = DataTypeCaster.getInstance().castToDataType(propertyValue, databaseName, collectionName, propertyName);
+            if (propertyValueCasted instanceof String) {
+                invertedPropertyIndex.insert((String) propertyValueCasted, documentId);
+            } else if (propertyValueCasted instanceof Integer) {
+                invertedPropertyIndex.insert((Integer) propertyValueCasted, documentId);
+            } else if (propertyValueCasted instanceof Double) {
+                invertedPropertyIndex.insert((Double) propertyValueCasted, documentId);
+            } else if (propertyValueCasted instanceof Boolean) {
+                invertedPropertyIndex.insert((Boolean) propertyValueCasted, documentId);
+            } else {
+                log.error("Failed to cast property value to a valid data type.");
+            }
+            log.info("Inserted new entry in inverted property index for collection: " + collectionName + " property: " + propertyName + " value: " + propertyValue);
+        }catch (Exception e){
+            log.error("Failed to insert into inverted property index.");
+            throw new RuntimeException("Failed to insert into inverted property index.");
+        }
+    }
     public String searchInPropertyIndex(String databaseName,String collectionName, String propertyName, String documentId) throws ResourceNotFoundException {
         String propertyIndexKey = getPropertyIndexKey(databaseName, collectionName, propertyName);
         PropertyIndex propertyIndex = propertyIndexMap.get(propertyIndexKey);
@@ -172,6 +232,28 @@ public class IndexingManager {
             throw new ResourceNotFoundException("Property Index");
         }
         return propertyIndex.search(documentId);
+    }
+    @SuppressWarnings("unchecked")
+    public List<String> searchInInvertedPropertyIndex(String databaseName, String collectionName, String propertyName, String propertyValue) throws ResourceNotFoundException {
+        String propertyIndexKey = getPropertyIndexKey(databaseName, collectionName, propertyName);
+        InvertedPropertyIndex invertedPropertyIndex = invertedPropertyIndexMap.get(propertyIndexKey);
+
+        if (invertedPropertyIndex == null) {
+            throw new ResourceNotFoundException("Inverted Property Index");
+        }
+        Object propertyValueCasted = DataTypeCaster.getInstance().castToDataType(propertyValue, databaseName, collectionName, propertyName);
+        if (propertyValueCasted instanceof String) {
+            return invertedPropertyIndex.search((String) propertyValueCasted);
+        } else if (propertyValueCasted instanceof Integer) {
+            return invertedPropertyIndex.search((Integer) propertyValueCasted);
+        } else if (propertyValueCasted instanceof Double) {
+            return invertedPropertyIndex.search((Double) propertyValueCasted);
+        } else if (propertyValueCasted instanceof Boolean) {
+            return invertedPropertyIndex.search((Boolean) propertyValueCasted);
+        } else {
+            log.error("Failed to cast property value to a valid data type.");
+            return new ArrayList<>();
+        }
     }
     public void deleteFromPropertyIndex(String databaseName,String collectionName, String propertyName, String documentId) throws ResourceNotFoundException {
         String propertyIndexKey = getPropertyIndexKey(databaseName, collectionName, propertyName);
@@ -181,10 +263,29 @@ public class IndexingManager {
             throw new ResourceNotFoundException("Property Index");
         }
         propertyIndex.delete(documentId);
-        fileService.rewritePropertyIndexFile(fileService.getPropertyIndexFile(databaseName, collectionName, propertyName)
-                                            , propertyIndex);
+        fileService.rewritePropertyIndexFile(fileService.getPropertyIndexFile(databaseName, collectionName, propertyName), propertyIndex);
     }
-    public void loadAllIndexes(String databaseName) {
+    public void deleteDocumentFromInvertedPropertyIndex(String databaseName, String collectionName, String propertyName,String propertyValue, String documentId) throws ResourceNotFoundException {
+        String propertyIndexKey = getPropertyIndexKey(databaseName, collectionName, propertyName);
+        InvertedPropertyIndex invertedPropertyIndex = invertedPropertyIndexMap.get(propertyIndexKey);
+        if (invertedPropertyIndex == null) {
+            log.error("Inverted Property Index does not exist.");
+            throw new ResourceNotFoundException("Inverted Property Index");
+        }
+        Object propertyValueCasted = DataTypeCaster.getInstance().castToDataType(propertyValue, databaseName, collectionName, propertyName);
+        if (propertyValueCasted instanceof String) {
+            invertedPropertyIndex.search((String) propertyValueCasted).remove(documentId);
+        } else if (propertyValueCasted instanceof Integer) {
+            invertedPropertyIndex.search((Integer) propertyValueCasted).remove(documentId);
+        } else if (propertyValueCasted instanceof Double) {
+            invertedPropertyIndex.search((Double) propertyValueCasted).remove(documentId);
+        } else if (propertyValueCasted instanceof Boolean) {
+            invertedPropertyIndex.search((Boolean) propertyValueCasted).remove(documentId);
+        } else {
+            log.error("Failed to cast property value to a valid data type.");
+        }
+    }
+    public void loadAllIndexes(String databaseName) throws ResourceNotFoundException {
         log.info("Loading all indexes from disk...");
         File indexesDirectory = fileService.getRootIndexesDirectory(databaseName);
         if(!indexesDirectory.exists()){
@@ -229,7 +330,8 @@ public class IndexingManager {
         log.info("loaded index for collection: " + collectionName);
     }
 
-    public void loadPropertyIndex(String databaseName,String collectionName , @NotNull String indexFileName) {
+    @SuppressWarnings("unchecked")
+    public void loadPropertyIndex(String databaseName,String collectionName , @NotNull String indexFileName) throws ResourceNotFoundException {
         String[] split = indexFileName.split("_");
         String propertyName = split[0];
         File indexFile = fileService.getPropertyIndexFile(databaseName,collectionName,propertyName);
@@ -237,21 +339,58 @@ public class IndexingManager {
             log.error("Index file does not exist for collection: " + collectionName + " property: " + propertyName);
             return;
         }
+        String key = getPropertyIndexKey(databaseName, collectionName, propertyName);
         PropertyIndex propertyIndex = new PropertyIndex();
-        propertyIndexMap.put(getPropertyIndexKey(databaseName,collectionName,propertyName), propertyIndex);
+        propertyIndexMap.put(key, propertyIndex);
+
+        InvertedPropertyIndex invertedPropertyIndex = invertedPropertyIndexMap.get(key);
+        if(invertedPropertyIndex == null){
+            createInvertedPropertyIndex(databaseName,collectionName,propertyName);
+            invertedPropertyIndex = invertedPropertyIndexMap.get(key);
+        }
+        String propertyType = DataTypeCaster.getInstance().getDataType(databaseName, collectionName, propertyName);
         Map<String, String> indexData = fileService.readPropertyIndexFile(indexFile);
-        for (Map.Entry<String, String> entry : indexData.entrySet()) {
-            propertyIndex.insert(entry.getKey(), entry.getValue());
+
+        switch (Objects.requireNonNull(propertyType).toUpperCase()) {
+            case "STRING" -> {
+                for (Map.Entry<String, String> entry : indexData.entrySet()) {
+                    propertyIndex.insert(entry.getKey(), entry.getValue());
+                    invertedPropertyIndex.insert(entry.getValue(), entry.getKey());
+                }
+            }
+            case "INTEGER" -> {
+                for (Map.Entry<String, String> entry : indexData.entrySet()) {
+                    propertyIndex.insert(entry.getKey(), entry.getValue());
+                    invertedPropertyIndex.insert(Integer.parseInt(entry.getValue()), entry.getKey());
+                }
+            }
+            case "NUMBER" -> {
+                for (Map.Entry<String, String> entry : indexData.entrySet()) {
+                    propertyIndex.insert(entry.getKey(), entry.getValue());
+                    invertedPropertyIndex.insert(Double.parseDouble(entry.getValue()), entry.getKey());
+                }
+            }
+            case "BOOLEAN" -> {
+                for (Map.Entry<String, String> entry : indexData.entrySet()) {
+                    propertyIndex.insert(entry.getKey(), entry.getValue());
+                    invertedPropertyIndex.insert(Boolean.parseBoolean(entry.getValue()), entry.getKey());
+                }
+            }
+            default -> log.error("Failed to cast property value to a valid data type.");
         }
         log.info("loaded property index for collection: " + collectionName + " property: " + propertyName);
     }
 
     public void deleteDocumentRelatedIndexes(String databaseName,String collectionName, String documentId) throws ResourceNotFoundException {
         DatabaseDiskCRUD databaseDiskCRUD = DatabaseDiskCRUD.getInstance();
+        Document document = databaseDiskCRUD.fetchDocumentFromDatabase(databaseName, collectionName, documentId).orElseThrow(() -> new ResourceNotFoundException("Document"));
+        ObjectNode documentContent = document.getContent();
         Schema collectionSchema = databaseDiskCRUD.getCollectionSchema(databaseName, collectionName);
         // Delete from all property indexes
         for (String propertyName : collectionSchema.getProperties().keySet()) {
             deleteFromPropertyIndex(databaseName,collectionName, propertyName, documentId);
+            String propertyValue = documentContent.get(propertyName).asText();
+            deleteDocumentFromInvertedPropertyIndex(databaseName,collectionName, propertyName, propertyValue, documentId);
         }
         // Delete from collection index
         deleteDocumentFromCollectionIndex(databaseName,collectionName, documentId);
@@ -282,6 +421,7 @@ public class IndexingManager {
     public void deleteAllIndexes(){
         collectionsIndexMap.clear();
         propertyIndexMap.clear();
+        invertedPropertyIndexMap.clear();
     }
 
 }

@@ -67,7 +67,8 @@ public class DocumentController {
                             .setBody(documentObj.getContent())
                             .setUrl("http://nodeNODE_ID:9000/api/databases/"+dbName+"/collections/"+collectionName+"/documents"));
         }
-        return new ResponseEntity<>("Document created successfully with Id : "+documentObj.getId(), HttpStatus.CREATED);
+        log.info("Created document with Id : "+documentObj.getId() +" successfully");
+        return new ResponseEntity<>("Created document with Id : "+documentObj.getId() +" successfully", HttpStatus.CREATED);
     }
     
     @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
@@ -101,7 +102,8 @@ public class DocumentController {
         if(!isBroadcasted){
             Broadcaster.broadcast(updateRequest);
         }
-        return new ResponseEntity<>("Document updated successfully", HttpStatus.OK);
+        log.info("Updated document with id : "+documentId+" successfully");
+        return new ResponseEntity<>("Updated document with id : "+documentId+" successfully", HttpStatus.OK);
     }
     @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
     @DeleteMapping("/{doc_id}")
@@ -132,7 +134,8 @@ public class DocumentController {
         if(!isBroadcasted){
             Broadcaster.broadcast(deleteRequest);
         }
-        return new ResponseEntity<>("Document deleted successfully", HttpStatus.OK);
+        log.info("Deleted Document with id : "+documentId+" successfully");
+        return new ResponseEntity<>("Deleted Document with id : "+documentId+" successfully", HttpStatus.OK);
     }
     @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
     @GetMapping("/{doc_id}")
@@ -147,16 +150,28 @@ public class DocumentController {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
         JsonNode document = documentOptional.get().getContent();
+        log.info("Fetched document with id: "+documentId+" from collection: "+collectionName+" in database: "+dbName+" successfully");
         return new ResponseEntity<>(document, HttpStatus.OK);
     }
     @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
     @GetMapping
     public ResponseEntity<String> fetchCollectionDocuments(@PathVariable("db_name") String dbName,
                                                            @PathVariable("collection_name") String collectionName,
+                                                           @RequestParam(value = "property_name", required = false) String propertyName,
+                                                           @RequestParam(value = "property_value", required = false) String propertyValue,
                                                            @RequestHeader("username") String username,
                                                            @RequestHeader("password") String password) throws JsonProcessingException, ResourceNotFoundException {
-
-        List<JsonNode> documents = documentService.fetchAllDocumentsFromCollection(dbName, collectionName);
+        List<JsonNode> documents;
+        if (propertyName != null) {
+            if (propertyValue == null) {
+                return new ResponseEntity<>("Property value is required when property name is provided", HttpStatus.BAD_REQUEST);
+            }
+            documents = documentService.fetchAllDocumentsByPropertyValue(dbName, collectionName, propertyName, propertyValue);
+            log.info("Fetched all documents from collection: "+collectionName+" in database: "+dbName+" with property: "+propertyName+" having value: "+propertyValue+" successfully");
+        } else {
+            documents = documentService.fetchAllDocumentsFromCollection(dbName, collectionName);
+            log.info("Fetched all documents from collection: "+collectionName+" in database: "+dbName+" successfully");
+        }
 
         ObjectMapper mapper = new ObjectMapper();
         String prettyDocuments = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(documents);
@@ -171,6 +186,8 @@ public class DocumentController {
                                                        @RequestHeader("username") String username,
                                                        @RequestHeader("password") String password) throws ResourceNotFoundException {
         String propertyValue = documentService.readDocumentProperty(dbName, collectionName, documentId, propertyName);
+        log.info("Read property: "+propertyName+" from document with id: "+documentId+" in collection: "+collectionName+" in database: "+dbName+" successfully");
         return new ResponseEntity<>(propertyValue, HttpStatus.OK);
     }
+
 }

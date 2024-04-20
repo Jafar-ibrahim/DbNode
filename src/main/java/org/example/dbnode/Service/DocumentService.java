@@ -48,7 +48,6 @@ public class DocumentService {
     }
 
     public void updateDocument(String databaseName, String collectionName, String documentId,ObjectNode updatedProperties) throws OperationFailedException, ResourceNotFoundException, VersionMismatchException {
-        //String newValueCasted = DataTypeCaster.getInstance().castToDataType(newValue.toString(), databaseName, collectionName, propertyName).toString();
         log.info("updating document: " + documentId + " in collection: " + collectionName + " in database: " + databaseName);
         databaseDiskCRUD.updateDocument(databaseName, collectionName, documentId, updatedProperties);
     }
@@ -66,5 +65,10 @@ public class DocumentService {
     public List<JsonNode> fetchAllDocumentsFromCollection(String databaseName, String collectionName) throws ResourceNotFoundException {
         log.info("fetching all documents from collection: " + collectionName + " in database: " + databaseName);
         return databaseDiskCRUD.fetchAllDocumentsFromCollection(databaseName, collectionName);
+    }
+
+    public List<JsonNode> fetchAllDocumentsByPropertyValue(String databaseName, String collectionName, String propertyName, String propertyValue) throws ResourceNotFoundException {
+        log.info("fetching all documents from collection: " + collectionName + " in database: " + databaseName + " with property: " + propertyName + " having value: " + propertyValue);
+        return databaseDiskCRUD.fetchAllDocumentsByPropertyValue(databaseName, collectionName, propertyName, propertyValue);
     }
 }
