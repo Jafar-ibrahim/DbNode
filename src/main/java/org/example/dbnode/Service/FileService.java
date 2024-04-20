@@ -30,8 +30,8 @@ import java.util.stream.Stream;
 @Log4j2
 public final class FileService {
     private static final String ROOT_PATH = "src/main/resources/databases";
-    private static final String USERS_FILE_PATH ="src/main/resources/dbData/users.json";
-    private static final String ADMINS_FILE_PATH ="src/main/resources/dbData/admins.json";
+    private static final String USERS_FILE_PATH ="src/main/resources/users/users.json";
+    private static final String ADMINS_FILE_PATH ="src/main/resources/users/admins.json";
 
     private static final class InstanceHolder {
         private static final FileService instance = new FileService();
