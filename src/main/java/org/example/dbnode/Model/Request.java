@@ -22,7 +22,7 @@ public class Request {
     private final HttpHeaders headers;
 
     public Request() {
-        params = new HashMap<String, Object>();
+        params = new HashMap<>();
         headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
     }
