@@ -425,7 +425,6 @@ public class DatabaseDiskCRUD {
     }
     public List<JsonNode> fetchAllDocumentsByPropertyValue(String databaseName, String collectionName, String propertyName, String propertyValue) throws ResourceNotFoundException {
         List<String> documentIds = fetchAllDocumentIdsByPropertyValue(databaseName, collectionName, propertyName, propertyValue);
-        System.out.println("Document IDs before fetch: " + documentIds);
         return fetchAllDocumentsByIds(databaseName, collectionName, documentIds);
     }
 }
