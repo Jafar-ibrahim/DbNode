@@ -41,9 +41,11 @@ public class DatabaseController {
                                                  @RequestHeader("username") String username,
                                                  @RequestHeader("password") String password) throws ResourceAlreadyExistsException, ResourceNotFoundException, VersionMismatchException {
 
-
+        String logMessage = "Received request to create database: ("+dbName+")";
         if(isBroadcasted){
-            log.info("Received broadcast request to create database: ("+dbName+")");
+            log.info("BROADCAST: "+logMessage);
+        }else {
+            log.info(logMessage);
         }
         databaseService.createDatabase(dbName);
         if (!isBroadcasted){
@@ -62,8 +64,11 @@ public class DatabaseController {
                                                  @RequestHeader("username") String username,
                                                  @RequestHeader("password") String password) throws IOException, ResourceNotFoundException {
 
+        String logMessage = "Received request to delete database: ("+dbName+")";
         if(isBroadcasted){
-            log.info("Received broadcast request to delete database: ("+dbName+")");
+            log.info("BROADCAST: "+logMessage);
+        }else {
+            log.info(logMessage);
         }
         databaseService.deleteDatabase(dbName);
         if (!isBroadcasted){

@@ -53,8 +53,11 @@ public class DocumentController {
                                                  @RequestHeader("password") String password,
                                                  @RequestHeader(value = "isBroadcast", required = false, defaultValue = "false") Boolean isBroadcasted) throws SchemaMismatchException, OperationFailedException, IOException, ResourceNotFoundException {
 
+        String logMessage = "Received request to create document in collection: ("+collectionName+") in database: ("+dbName+")";
         if(isBroadcasted){
-            log.info("Received broadcast request to create document in collection: ("+collectionName+") in database: ("+dbName+")");
+            log.info("BROADCAST: "+logMessage);
+        }else {
+            log.info(logMessage);
         }
 
         Optional<String> documentId = Optional.ofNullable(documentNode.get("_id")).map(JsonNode::asText);
@@ -67,7 +70,6 @@ public class DocumentController {
                             .setBody(documentObj.getContent())
                             .setUrl("http://nodeNODE_ID:9000/api/databases/"+dbName+"/collections/"+collectionName+"/documents"));
         }
-        log.info("Created document with Id : "+documentObj.getId() +" successfully");
         return new ResponseEntity<>("Created document with Id : "+documentObj.getId() +" successfully", HttpStatus.CREATED);
     }
     
@@ -81,8 +83,11 @@ public class DocumentController {
                                                  @RequestHeader("username") String username,
                                                  @RequestHeader("password") String password) throws OperationFailedException, ResourceNotFoundException, VersionMismatchException {
 
+        String logMessage = "Received request to update document with Id : ("+documentId+") in collection: ("+collectionName+") in database: ("+dbName+")";
         if(isBroadcasted){
-            log.info("Received broadcast request to update document with Id : ("+documentId+") in collection: ("+collectionName+") in database: ("+dbName+")");
+            log.info("BROADCAST: "+logMessage);
+        }else {
+            log.info(logMessage);
         }
         int nodeWithAffinity = AffinityBalancer.getInstance().getNodeWithAffinityId(documentId);
         int currentNode = NodeInfo.getInstance().getNodeId();
@@ -102,7 +107,6 @@ public class DocumentController {
         if(!isBroadcasted){
             Broadcaster.broadcast(updateRequest);
         }
-        log.info("Updated document with id : "+documentId+" successfully");
         return new ResponseEntity<>("Updated document with id : "+documentId+" successfully", HttpStatus.OK);
     }
     @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
@@ -114,8 +118,11 @@ public class DocumentController {
                                                  @RequestHeader("username") String username,
                                                  @RequestHeader("password") String password) throws OperationFailedException, ResourceNotFoundException {
 
+        String logMessage = "Received request to delete document with Id : ("+documentId+") from collection: ("+collectionName+") in database: ("+dbName+")";
         if(isBroadcasted){
-            log.info("Received broadcast request to delete document from collection: ("+collectionName+") in database: ("+dbName+")");
+            log.info("BROADCAST: "+logMessage);
+        }else {
+            log.info(logMessage);
         }
         int nodeWithAffinity = AffinityBalancer.getInstance().getNodeWithAffinityId(documentId);
         int currentNode = NodeInfo.getInstance().getNodeId();
@@ -130,13 +137,45 @@ public class DocumentController {
                     "redirecting request to node with affinity (node "+nodeWithAffinity+")");
             return RedirectionService.redirect(deleteRequest, nodeWithAffinity);
         }
-        documentService.deleteDocument(dbName, collectionName, documentId);
+        documentService.deleteDocumentById(dbName, collectionName, documentId);
         if(!isBroadcasted){
             Broadcaster.broadcast(deleteRequest);
         }
-        log.info("Deleted Document with id : "+documentId+" successfully");
         return new ResponseEntity<>("Deleted Document with id : "+documentId+" successfully", HttpStatus.OK);
     }
+
+    @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
+    @DeleteMapping
+    public ResponseEntity<String> deleteCollectionDocuments(@PathVariable("db_name") String dbName,
+                                          @PathVariable("collection_name") String collectionName,
+                                          @RequestParam(value = "property_name", required = false) String propertyName,
+                                          @RequestParam(value = "property_value", required = false) String propertyValue,
+                                          @RequestHeader("username") String username,
+                                          @RequestHeader("password") String password) throws OperationFailedException, ResourceNotFoundException {
+        List<String> documentsIds;
+        if (propertyName != null) {
+            if (propertyValue == null) {
+                return new ResponseEntity<>("Property value is required when property name is provided", HttpStatus.BAD_REQUEST);
+            }
+            documentsIds = documentService.fetchAllDocumentsIdsByPropertyValue(dbName, collectionName, propertyName, propertyValue);
+            log.info("Fetched all documents from collection: "+collectionName+" in database: "+dbName+" with property: "+propertyName+" having value: "+propertyValue+" successfully");
+        } else {
+            documentsIds = documentService.fetchAllDocumentsIdsFromCollection(dbName, collectionName);
+            log.info("Fetched all documents from collection: "+collectionName+" in database: "+dbName+" successfully");
+        }
+        for(String documentId : documentsIds){
+            deleteDocument(dbName, collectionName, documentId, false, username, password);
+        }
+        String responseMessage;
+        if(propertyName != null){
+            responseMessage = "Deleted all documents from collection: "+collectionName+" with property: "+propertyName+" having value: "+propertyValue+" successfully";
+        }else {
+            responseMessage = "Deleted all documents from collection: "+collectionName+" successfully";
+        }
+        log.info(responseMessage);
+        return new ResponseEntity<>(responseMessage, HttpStatus.OK);
+    }
+
     @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
     @GetMapping("/{doc_id}")
     public ResponseEntity<JsonNode> fetchDocumentById(@PathVariable("db_name") String dbName,

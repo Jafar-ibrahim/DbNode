@@ -59,8 +59,12 @@ public final class FileService {
         ObjectWriter writer = mapper.writerWithDefaultPrettyPrinter();
         writer.writeValue(file, jsonContent);
     }
-    public void writeToFile(File file, String content) throws IOException {
-        Files.write(Paths.get(file.toURI()),content.getBytes());
+    public void writeToFile(File file, String content) throws OperationFailedException {
+        try {
+            Files.write(Paths.get(file.toURI()),content.getBytes());
+        } catch (IOException e) {
+            throw new OperationFailedException("write to file");
+        }
     }
     public File getDatabaseDirectory(String dbName) {
         return new File(ROOT_PATH + "/" + dbName);

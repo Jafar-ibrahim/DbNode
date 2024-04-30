@@ -23,9 +23,9 @@ public class RedirectionService {
         try {
             response = restTemplate.exchange(url, method, requestEntity, String.class);
         } catch (Exception e) {
-            String[] parts = e.getMessage().split(":");
-            int errorCode = Integer.parseInt(parts[0].trim());
-            String errorMessage = parts[1].trim();
+            String[] parts = e.getMessage().split(",");
+            int errorCode = Integer.parseInt(parts[1].split(":")[1]);
+            String errorMessage = parts[2].split(":")[1];
             log.error("Response from affinity node: " + e.getMessage());
             throw new RedirectionException(errorMessage, errorCode);
         }

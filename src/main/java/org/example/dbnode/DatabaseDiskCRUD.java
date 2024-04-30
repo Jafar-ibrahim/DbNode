@@ -99,14 +99,14 @@ public class DatabaseDiskCRUD {
         return Arrays.asList(directories);
     }
 
-    public void createCollectionFromJsonSchema(String databaseName, String collectionName, JsonNode jsonSchema) throws ResourceAlreadyExistsException, IOException, ResourceNotFoundException {
+    public void createCollectionFromJsonSchema(String databaseName, String collectionName, JsonNode jsonSchema) throws ResourceAlreadyExistsException, IOException, ResourceNotFoundException, OperationFailedException {
         File schemaFile = createCollection(databaseName, collectionName);
         // Write schema on disk
         fileService.writePrettyJson(schemaFile, jsonSchema);
         log.info("Collection created successfully.");
     }
 
-    public void createCollectionFromClass(String databaseName, String collectionName, Class<?> clazz) throws ResourceAlreadyExistsException, IOException, ResourceNotFoundException {
+    public void createCollectionFromClass(String databaseName, String collectionName, Class<?> clazz) throws ResourceAlreadyExistsException, ResourceNotFoundException, IOException, OperationFailedException {
         File schemaFile = createCollection(databaseName, collectionName);
         JsonNode schema = Schema.fromClass(clazz);
         // Write schema on disk
@@ -114,7 +114,7 @@ public class DatabaseDiskCRUD {
         log.info("Collection created successfully.");
     }
 
-    private File createCollection(String databaseName, String collectionName) throws ResourceNotFoundException, ResourceAlreadyExistsException, IOException {
+    private File createCollection(String databaseName, String collectionName) throws ResourceNotFoundException, ResourceAlreadyExistsException, OperationFailedException {
         ReentrantLock collectionLock = locksManager.getCollectionLock(databaseName, collectionName);
         collectionLock.lock();
         try {
@@ -271,9 +271,9 @@ public class DatabaseDiskCRUD {
         collectionLock.lock();
         documentLock.lock();
         try {
+            indexingManager.deleteDocumentRelatedIndexes(databaseName, collectionName, documentId);
             collectionDocs.remove(index);
             fileService.rewriteCollectionFile(collectionFile, collectionDocs);
-            indexingManager.deleteDocumentRelatedIndexes(databaseName, collectionName, documentId);
         }finally {
             collectionLock.unlock();
             documentLock.unlock();
@@ -291,7 +291,7 @@ public class DatabaseDiskCRUD {
         Optional<Document> documentOptional = fetchDocumentFromDatabase(databaseName, collectionName, documentId);
         if (documentOptional.isEmpty()) {
             throw new ResourceNotFoundException("Document with ID " + documentId + " in collection " + collectionName);
-        } else {
+        }else {
             document = documentOptional.get();
         }
         ReentrantLock collectionLock = locksManager.getCollectionLock(databaseName, collectionName),
@@ -369,6 +369,7 @@ public class DatabaseDiskCRUD {
         for (String documentId : documentIds) {
             int index;
             try {
+                System.out.println("Document ID: " + documentId );
                 index = getDocumentIndex(databaseName, collectionName, documentId);
             } catch (ResourceNotFoundException e) {
                 log.error("Document with ID " + documentId + " not found in collection " + collectionName);
@@ -411,8 +412,21 @@ public class DatabaseDiskCRUD {
         }
         return documents;
     }
+
+    public List<String> fetchAllDocumentsIdsFromCollection(String databaseName, String collectionName) throws ResourceNotFoundException {
+        ArrayNode jsonArray = fileService.getCollectionDocuments(databaseName, collectionName);
+        List<String> documentIds = new ArrayList<>();
+        for (JsonNode jsonNode : jsonArray) {
+            documentIds.add(jsonNode.get("_id").asText());
+        }
+        return documentIds;
+    }
+    public List<String> fetchAllDocumentIdsByPropertyValue(String databaseName, String collectionName, String propertyName, String propertyValue) throws ResourceNotFoundException {
+        return indexingManager.searchInInvertedPropertyIndex(databaseName, collectionName, propertyName, propertyValue);
+    }
     public List<JsonNode> fetchAllDocumentsByPropertyValue(String databaseName, String collectionName, String propertyName, String propertyValue) throws ResourceNotFoundException {
-        List<String> documentIds = indexingManager.searchInInvertedPropertyIndex(databaseName, collectionName, propertyName, propertyValue);
+        List<String> documentIds = fetchAllDocumentIdsByPropertyValue(databaseName, collectionName, propertyName, propertyValue);
+        System.out.println("Document IDs before fetch: " + documentIds);
         return fetchAllDocumentsByIds(databaseName, collectionName, documentIds);
     }
 }

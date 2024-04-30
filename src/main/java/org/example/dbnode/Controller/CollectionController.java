@@ -42,11 +42,13 @@ public class CollectionController {
                                                    @RequestBody JsonNode schema,
                                                    @RequestHeader(value = "isBroadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
                                                    @RequestHeader("username") String username,
-                                                   @RequestHeader("password") String password) throws ResourceAlreadyExistsException, IOException, ResourceNotFoundException {
+                                                   @RequestHeader("password") String password) throws ResourceAlreadyExistsException, IOException, ResourceNotFoundException, OperationFailedException {
 
-
+        String logMessage = "Received request to create collection: ("+collectionName+") in database: ("+dbName+")";
         if(isBroadcasted){
-            log.info("Received broadcast request to create collection: ("+collectionName+") in database: ("+dbName+")");
+            log.info("BROADCAST: "+logMessage);
+        }else {
+            log.info(logMessage);
         }
         collectionService.createCollection(dbName, collectionName, schema);
         if (!isBroadcasted){
@@ -67,9 +69,11 @@ public class CollectionController {
                                                    @RequestHeader("username") String username,
                                                    @RequestHeader("password") String password) throws OperationFailedException, IOException, ResourceNotFoundException {
 
-
+        String logMessage = "Received request to delete collection: ("+collectionName+") from database: ("+dbName+")";
         if(isBroadcasted){
-            log.info("Received broadcast request to delete collection: ("+collectionName+") from database: ("+dbName+")");
+            log.info("BROADCAST: "+logMessage);
+        }else {
+            log.info(logMessage);
         }
         collectionService.deleteCollection(dbName, collectionName);
         if (!isBroadcasted){

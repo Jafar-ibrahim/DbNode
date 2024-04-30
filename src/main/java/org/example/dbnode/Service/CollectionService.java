@@ -30,7 +30,7 @@ public class CollectionService {
         return databaseDiskCRUD.getCollectionSchema(databaseName, collectionName);
     }
 
-    public void createCollection(String databaseName, String collectionName, JsonNode jsonSchema) throws ResourceAlreadyExistsException, IOException, ResourceNotFoundException {
+    public void createCollection(String databaseName, String collectionName, JsonNode jsonSchema) throws ResourceAlreadyExistsException, IOException, ResourceNotFoundException, OperationFailedException {
         log.info("creating collection: " + collectionName + " in database: " + databaseName);
         databaseRegistry.addCollection(databaseName, collectionName, jsonSchema);
         databaseDiskCRUD.createCollectionFromJsonSchema(databaseName, collectionName, jsonSchema);

@@ -39,17 +39,21 @@ public class DocumentService {
         }
         String documentIdString = documentIdOpt.orElse(UUID.randomUUID().toString());
         // This method contains Document Indexing implicitly
-        return databaseDiskCRUD.createDocument(databaseName, collectionName, document,documentIdString);
+        Document newDoc =  databaseDiskCRUD.createDocument(databaseName, collectionName, document,documentIdString);
+        log.info("Created document with Id : "+ newDoc.getId() +" successfully");
+        return newDoc;
     }
 
-    public void deleteDocument(String databaseName, String collectionName, String documentId) throws OperationFailedException, ResourceNotFoundException {
+    public void deleteDocumentById(String databaseName, String collectionName, String documentId) throws OperationFailedException, ResourceNotFoundException {
         log.info("deleting document: " + documentId + " from collection: " + collectionName + " in database: " + databaseName);
         databaseDiskCRUD.deleteDocumentFromCollection(databaseName, collectionName, documentId);
+        log.info("Deleted Document with id : "+documentId+" successfully");
     }
 
     public void updateDocument(String databaseName, String collectionName, String documentId,ObjectNode updatedProperties) throws OperationFailedException, ResourceNotFoundException, VersionMismatchException {
         log.info("updating document: " + documentId + " in collection: " + collectionName + " in database: " + databaseName);
         databaseDiskCRUD.updateDocument(databaseName, collectionName, documentId, updatedProperties);
+        log.info("Updated document with id : "+documentId+" successfully");
     }
 
     public String readDocumentProperty(String databaseName, String collectionName, String documentId, String propertyName) throws ResourceNotFoundException {
@@ -70,5 +74,15 @@ public class DocumentService {
     public List<JsonNode> fetchAllDocumentsByPropertyValue(String databaseName, String collectionName, String propertyName, String propertyValue) throws ResourceNotFoundException {
         log.info("fetching all documents from collection: " + collectionName + " in database: " + databaseName + " with property: " + propertyName + " having value: " + propertyValue);
         return databaseDiskCRUD.fetchAllDocumentsByPropertyValue(databaseName, collectionName, propertyName, propertyValue);
+    }
+
+    public List<String> fetchAllDocumentsIdsByPropertyValue (String databaseName, String collectionName, String propertyName, String propertyValue) throws ResourceNotFoundException {
+        log.info("fetching all documents ids from collection: " + collectionName + " in database: " + databaseName + " with property: " + propertyName + " having value: " + propertyValue);
+        return databaseDiskCRUD.fetchAllDocumentIdsByPropertyValue(databaseName, collectionName, propertyName, propertyValue);
+    }
+
+    public List<String> fetchAllDocumentsIdsFromCollection(String databaseName, String collectionName) throws ResourceNotFoundException {
+        log.info("fetching all document ids from collection: " + collectionName + " in database: " + databaseName);
+        return databaseDiskCRUD.fetchAllDocumentsIdsFromCollection(databaseName, collectionName);
     }
 }
