@@ -1,5 +1,8 @@
 package org.example.dbnode.Service;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.util.DefaultIndenter;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -209,21 +212,6 @@ public final class FileService {
             return null;
         }
     }
-
-    public void rewriteCollectionFile(File collectionFile, ArrayNode jsonArray) {
-        ObjectMapper mapper = new ObjectMapper();
-        try (RandomAccessFile file = new RandomAccessFile(collectionFile, "rw")) {
-            file.setLength(0);
-            if (!jsonArray.isEmpty()) {
-                mapper.writerWithDefaultPrettyPrinter().writeValue(file, jsonArray);
-            }else {
-                file.writeBytes("[]");
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            log.error("Failed to rewrite collection file");
-        }
-    }
     public void writeDocumentToCollection(File collectionFile, ObjectNode document) throws ResourceNotFoundException, OperationFailedException {
         ObjectMapper mapper = new ObjectMapper();
         try (RandomAccessFile file = new RandomAccessFile(collectionFile, "rw")) {
@@ -248,8 +236,18 @@ public final class FileService {
     public boolean writeJsonArrayFile(Path filePath, ArrayNode jsonArray) {
         try {
             Files.createDirectories(filePath.getParent());
-            ObjectMapper mapper = new ObjectMapper();
-            Files.writeString(filePath, mapper.writeValueAsString(jsonArray));
+            if (!jsonArray.isEmpty()) {
+                ObjectMapper mapper = new ObjectMapper();
+                DefaultPrettyPrinter.Indenter indenter = new DefaultIndenter("    ", DefaultIndenter.SYS_LF);
+                DefaultPrettyPrinter prettyPrinter = new DefaultPrettyPrinter();
+                prettyPrinter.indentObjectsWith(indenter);
+                prettyPrinter.indentArraysWith(indenter);
+                ObjectWriter writer = mapper.writer(prettyPrinter);
+                String jsonString = writer.writeValueAsString(jsonArray);
+                Files.writeString(filePath, jsonString);
+            }else {
+                Files.writeString(filePath, "[]");
+            }
             return true;
         } catch (IOException e) {
             log.error("Error while writing JSON file: " + e.getMessage());

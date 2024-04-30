@@ -273,7 +273,7 @@ public class DatabaseDiskCRUD {
         try {
             indexingManager.deleteDocumentRelatedIndexes(databaseName, collectionName, documentId);
             collectionDocs.remove(index);
-            fileService.rewriteCollectionFile(collectionFile, collectionDocs);
+            fileService.writeJsonArrayFile(collectionFile.toPath(), collectionDocs);
         }finally {
             collectionLock.unlock();
             documentLock.unlock();

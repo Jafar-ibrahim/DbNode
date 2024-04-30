@@ -26,6 +26,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 @Log4j2
@@ -163,7 +164,8 @@ public class DocumentController {
             documentsIds = documentService.fetchAllDocumentsIdsFromCollection(dbName, collectionName);
             log.info("Fetched all documents from collection: "+collectionName+" in database: "+dbName+" successfully");
         }
-        for(String documentId : documentsIds){
+        List<String> documentsIdsCopy = new ArrayList<>(documentsIds);
+        for(String documentId : documentsIdsCopy){
             deleteDocument(dbName, collectionName, documentId, false, username, password);
         }
         String responseMessage;

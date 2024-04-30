@@ -1,6 +1,8 @@
 package org.example.dbnode.Affinity;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.log4j.Log4j2;
 import org.example.dbnode.Exception.RedirectionException;
 import org.example.dbnode.Model.Request;
@@ -9,6 +11,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.util.Map;
 @Log4j2
 public class RedirectionService {
@@ -23,10 +26,19 @@ public class RedirectionService {
         try {
             response = restTemplate.exchange(url, method, requestEntity, String.class);
         } catch (Exception e) {
-            String[] parts = e.getMessage().split(",");
-            int errorCode = Integer.parseInt(parts[1].split(":")[1]);
-            String errorMessage = parts[2].split(":")[1];
             log.error("Response from affinity node: " + e.getMessage());
+            String errorMessage;
+            int errorCode;
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode errorJson = mapper.readTree(e.getMessage());
+                errorCode = errorJson.get("status").asInt();
+                errorMessage = errorJson.get("error").asText();
+            } catch (NullPointerException | JsonProcessingException jsonException) {
+                String[] parts = e.getMessage().split(":");
+                errorCode = Integer.parseInt(parts[0].trim());
+                errorMessage = parts[1].trim();
+            }
             throw new RedirectionException(errorMessage, errorCode);
         }
 
