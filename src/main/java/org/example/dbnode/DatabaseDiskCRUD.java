@@ -369,7 +369,6 @@ public class DatabaseDiskCRUD {
         for (String documentId : documentIds) {
             int index;
             try {
-                System.out.println("Document ID: " + documentId );
                 index = getDocumentIndex(databaseName, collectionName, documentId);
             } catch (ResourceNotFoundException e) {
                 log.error("Document with ID " + documentId + " not found in collection " + collectionName);

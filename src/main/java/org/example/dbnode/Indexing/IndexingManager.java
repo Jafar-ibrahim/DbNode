@@ -210,7 +210,6 @@ public class IndexingManager {
             Object propertyValueCasted = DataTypeCaster.getInstance().castToDataType(propertyValue, databaseName, collectionName, propertyName);
             if (propertyValueCasted instanceof String) {
                 invertedPropertyIndex.insert((String) propertyValueCasted, documentId);
-                System.out.println("after insertion : "+invertedPropertyIndex.search((String) propertyValueCasted));
             } else if (propertyValueCasted instanceof Integer) {
                 invertedPropertyIndex.insert((Integer) propertyValueCasted, documentId);
             } else if (propertyValueCasted instanceof Double) {
@@ -276,10 +275,7 @@ public class IndexingManager {
         }
         Object propertyValueCasted = DataTypeCaster.getInstance().castToDataType(propertyValue, databaseName, collectionName, propertyName);
         if (propertyValueCasted instanceof String) {
-            System.out.println("property value casted : "+propertyValueCasted);
-            System.out.println("before deletion : "+invertedPropertyIndex.search("\""+ propertyValueCasted +"\""));
             invertedPropertyIndex.search("\""+ propertyValueCasted +"\"").remove(documentId);
-            System.out.println("after deletion : "+invertedPropertyIndex.search("\""+ propertyValueCasted +"\""));
         } else if (propertyValueCasted instanceof Integer) {
             invertedPropertyIndex.search((Integer) propertyValueCasted).remove(documentId);
         } else if (propertyValueCasted instanceof Double) {
@@ -392,8 +388,6 @@ public class IndexingManager {
                                             .orElseThrow(() -> new ResourceNotFoundException("Document with id : "+documentId));
         ObjectNode documentContent = document.getContent();
         Schema collectionSchema = databaseDiskCRUD.getCollectionSchema(databaseName, collectionName);
-        System.out.println("document details : "+documentContent);
-        System.out.println("collection schema : "+collectionSchema.getProperties().keySet());
         // Delete from all property indexes
         for (String propertyName : collectionSchema.getProperties().keySet()) {
             String propertyValue = documentContent.get(propertyName).asText();

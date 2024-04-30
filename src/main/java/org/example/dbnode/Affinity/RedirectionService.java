@@ -33,7 +33,6 @@ public class RedirectionService {
         if (response.getStatusCode().is4xxClientError() || response.getStatusCode().is5xxServerError()) {
             String errorMessage = response.getBody();
             int errorCode = response.getStatusCode().value();
-            System.out.println("error code: " + errorCode);
             throw new RedirectionException(errorMessage, errorCode);
         }
         return response;
