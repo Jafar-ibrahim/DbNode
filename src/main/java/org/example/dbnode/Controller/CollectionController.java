@@ -7,8 +7,10 @@ import org.example.dbnode.Model.Request;
 import org.example.dbnode.Exception.OperationFailedException;
 import org.example.dbnode.Exception.ResourceAlreadyExistsException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
-import org.example.dbnode.Service.AuthenticationService;
-import org.example.dbnode.Service.CollectionService;
+import org.example.dbnode.Service.AuthenticationServiceImpl;
+import org.example.dbnode.Service.CollectionServiceImpl;
+import org.example.dbnode.Service.Interfaces.AuthenticationService;
+import org.example.dbnode.Service.Interfaces.CollectionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -30,12 +32,12 @@ public class CollectionController {
     private final CollectionService collectionService;
 
     @Autowired
-    public CollectionController(AuthenticationService authenticationService, CollectionService collectionService){
+    public CollectionController(AuthenticationServiceImpl authenticationService, CollectionServiceImpl collectionService){
         this.authenticationService = authenticationService;
         this.collectionService = collectionService;
     }
 
-    @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
+    @PreAuthorize("@authenticationServiceImpl.authenticateAdmin(#username, #password)")
     @PostMapping("/{collection_name}")
     public ResponseEntity<String> createCollection(@PathVariable("db_name") String dbName,
                                                    @PathVariable("collection_name") String collectionName,
@@ -61,7 +63,7 @@ public class CollectionController {
         }
         return new ResponseEntity<>("Collection created successfully", HttpStatus.CREATED);
     }
-    @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
+    @PreAuthorize("@authenticationServiceImpl.authenticateAdmin(#username, #password)")
     @DeleteMapping("/{collection_name}")
     public ResponseEntity<String> deleteCollection(@PathVariable("db_name") String dbName,
                                                    @PathVariable("collection_name") String collectionName,
@@ -85,7 +87,7 @@ public class CollectionController {
         }
         return new ResponseEntity<>("Collection deleted successfully", HttpStatus.OK);
     }
-    @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
+    @PreAuthorize("@authenticationServiceImpl.authenticateAdmin(#username, #password)")
     @GetMapping
     public ResponseEntity<List<String>> fetchExistingCollections(
             @PathVariable("db_name") String dbName,

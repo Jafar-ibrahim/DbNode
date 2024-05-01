@@ -5,7 +5,7 @@ import org.example.dbnode.DatabaseDiskCRUD;
 import org.example.dbnode.Exception.ResourceAlreadyExistsException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
 import org.example.dbnode.DatabaseRegistry;
-import org.example.dbnode.Service.Interface.IDatabaseService;
+import org.example.dbnode.Service.Interfaces.DatabaseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,12 +14,12 @@ import java.util.List;
 
 @Log4j2
 @Service
-public class DatabaseService implements IDatabaseService {
+public class DatabaseServiceImpl implements DatabaseService {
     private final DatabaseDiskCRUD databaseDiskCRUD;
     private final DatabaseRegistry databaseRegistry;
 
     @Autowired
-    public DatabaseService(DatabaseDiskCRUD databaseDiskCRUD, DatabaseRegistry databaseRegistry) {
+    public DatabaseServiceImpl(DatabaseDiskCRUD databaseDiskCRUD, DatabaseRegistry databaseRegistry) {
         this.databaseDiskCRUD = databaseDiskCRUD;
         this.databaseRegistry = databaseRegistry;
     }

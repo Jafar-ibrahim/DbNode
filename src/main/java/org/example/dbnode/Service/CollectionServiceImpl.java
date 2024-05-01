@@ -8,7 +8,7 @@ import org.example.dbnode.Exception.ResourceAlreadyExistsException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
 import org.example.dbnode.DatabaseRegistry;
 import org.example.dbnode.Model.Schema;
-import org.example.dbnode.Service.Interface.ICollectionService;
+import org.example.dbnode.Service.Interfaces.CollectionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,12 +16,12 @@ import java.io.IOException;
 import java.util.List;
 @Log4j2
 @Service
-public class CollectionService implements ICollectionService {
+public class CollectionServiceImpl implements CollectionService {
     private final DatabaseDiskCRUD databaseDiskCRUD;
     private final DatabaseRegistry databaseRegistry;
 
     @Autowired
-    public CollectionService(DatabaseDiskCRUD databaseDiskCRUD, DatabaseRegistry databaseRegistry) {
+    public CollectionServiceImpl(DatabaseDiskCRUD databaseDiskCRUD, DatabaseRegistry databaseRegistry) {
         this.databaseDiskCRUD = databaseDiskCRUD;
         this.databaseRegistry = databaseRegistry;
     }

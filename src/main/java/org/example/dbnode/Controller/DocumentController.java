@@ -15,8 +15,10 @@ import org.example.dbnode.Exception.VersionMismatchException;
 import org.example.dbnode.Model.Document;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.dbnode.Model.NodeInfo;
-import org.example.dbnode.Service.AuthenticationService;
-import org.example.dbnode.Service.DocumentService;
+import org.example.dbnode.Service.AuthenticationServiceImpl;
+import org.example.dbnode.Service.DocumentServiceImpl;
+import org.example.dbnode.Service.Interfaces.AuthenticationService;
+import org.example.dbnode.Service.Interfaces.DocumentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -40,12 +42,12 @@ public class DocumentController {
     private final DocumentService documentService;
 
     @Autowired
-    public DocumentController(AuthenticationService authenticationService, DocumentService documentService) {
+    public DocumentController(AuthenticationServiceImpl authenticationService, DocumentServiceImpl documentService) {
         this.authenticationService = authenticationService;
         this.documentService = documentService;
     }
 
-    @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
+    @PreAuthorize("@authenticationServiceImpl.authenticateAdmin(#username, #password)")
     @PostMapping
     public ResponseEntity<String> createDocument(@PathVariable("db_name") String dbName,
                                                  @PathVariable("collection_name") String collectionName,
@@ -74,7 +76,7 @@ public class DocumentController {
         return new ResponseEntity<>("Created document with Id : "+documentObj.getId() +" successfully", HttpStatus.CREATED);
     }
     
-    @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
+    @PreAuthorize("@authenticationServiceImpl.authenticateAdmin(#username, #password)")
     @PutMapping("/{doc_id}")
     public ResponseEntity<String> updateDocument(@PathVariable("db_name") String dbName,
                                                  @PathVariable("collection_name") String collectionName,
@@ -110,7 +112,7 @@ public class DocumentController {
         }
         return new ResponseEntity<>("Updated document with id : "+documentId+" successfully", HttpStatus.OK);
     }
-    @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
+    @PreAuthorize("@authenticationServiceImpl.authenticateAdmin(#username, #password)")
     @DeleteMapping("/{doc_id}")
     public ResponseEntity<String> deleteDocument(@PathVariable("db_name") String dbName,
                                                  @PathVariable("collection_name") String collectionName,
@@ -145,7 +147,7 @@ public class DocumentController {
         return new ResponseEntity<>("Deleted Document with id : "+documentId+" successfully", HttpStatus.OK);
     }
 
-    @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
+    @PreAuthorize("@authenticationServiceImpl.authenticateAdmin(#username, #password)")
     @DeleteMapping
     public ResponseEntity<String> deleteCollectionDocuments(@PathVariable("db_name") String dbName,
                                           @PathVariable("collection_name") String collectionName,
@@ -178,7 +180,7 @@ public class DocumentController {
         return new ResponseEntity<>(responseMessage, HttpStatus.OK);
     }
 
-    @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
+    @PreAuthorize("@authenticationServiceImpl.authenticateAdmin(#username, #password)")
     @GetMapping("/{doc_id}")
     public ResponseEntity<JsonNode> fetchDocumentById(@PathVariable("db_name") String dbName,
                                                       @PathVariable("collection_name") String collectionName,
@@ -194,7 +196,7 @@ public class DocumentController {
         log.info("Fetched document with id: "+documentId+" from collection: "+collectionName+" in database: "+dbName+" successfully");
         return new ResponseEntity<>(document, HttpStatus.OK);
     }
-    @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
+    @PreAuthorize("@authenticationServiceImpl.authenticateAdmin(#username, #password)")
     @GetMapping
     public ResponseEntity<String> fetchCollectionDocuments(@PathVariable("db_name") String dbName,
                                                            @PathVariable("collection_name") String collectionName,
@@ -218,7 +220,7 @@ public class DocumentController {
         String prettyDocuments = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(documents);
         return new ResponseEntity<>(prettyDocuments, HttpStatus.OK);
     }
-    @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
+    @PreAuthorize("@authenticationServiceImpl.authenticateAdmin(#username, #password)")
     @GetMapping("/{doc_id}/{propertyName}")
     public ResponseEntity<String> readDocumentProperty(@PathVariable("db_name") String dbName,
                                                        @PathVariable("collection_name") String collectionName,

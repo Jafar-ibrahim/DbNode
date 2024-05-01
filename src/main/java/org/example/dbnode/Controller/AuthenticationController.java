@@ -1,6 +1,7 @@
 package org.example.dbnode.Controller;
 
-import org.example.dbnode.Service.AuthenticationService;
+import org.example.dbnode.Service.AuthenticationServiceImpl;
+import org.example.dbnode.Service.Interfaces.AuthenticationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,7 @@ public class AuthenticationController {
     private final AuthenticationService authenticationService;
 
     @Autowired
-    public AuthenticationController(AuthenticationService authenticationService) {
+    public AuthenticationController(AuthenticationServiceImpl authenticationService) {
         this.authenticationService = authenticationService;
     }
 

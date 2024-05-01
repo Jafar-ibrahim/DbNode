@@ -1,4 +1,4 @@
-package org.example.dbnode.Service.Interface;
+package org.example.dbnode.Service.Interfaces;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
-public interface IDocumentService {
+public interface DocumentService {
     Document createDocument(String databaseName, String collectionName, ObjectNode documentJson, Optional<String> documentIdOpt) throws OperationFailedException, IOException, ResourceNotFoundException, SchemaMismatchException;
     void deleteDocumentById(String databaseName, String collectionName, String documentId) throws OperationFailedException, ResourceNotFoundException;
     void updateDocument(String databaseName, String collectionName, String documentId, ObjectNode updatedProperties) throws OperationFailedException, ResourceNotFoundException, VersionMismatchException;

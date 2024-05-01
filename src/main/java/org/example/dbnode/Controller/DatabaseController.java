@@ -6,8 +6,10 @@ import org.example.dbnode.Exception.VersionMismatchException;
 import org.example.dbnode.Model.Request;
 import org.example.dbnode.Exception.ResourceAlreadyExistsException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
-import org.example.dbnode.Service.AuthenticationService;
-import org.example.dbnode.Service.DatabaseService;
+import org.example.dbnode.Service.AuthenticationServiceImpl;
+import org.example.dbnode.Service.DatabaseServiceImpl;
+import org.example.dbnode.Service.Interfaces.AuthenticationService;
+import org.example.dbnode.Service.Interfaces.DatabaseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -29,12 +31,12 @@ public class DatabaseController {
     private final DatabaseService databaseService;
 
     @Autowired
-    public DatabaseController(AuthenticationService authenticationService, DatabaseService databaseService){
+    public DatabaseController(AuthenticationServiceImpl authenticationService, DatabaseServiceImpl databaseService){
         this.authenticationService = authenticationService;
         this.databaseService = databaseService;
     }
 
-    @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
+    @PreAuthorize("@authenticationServiceImpl.authenticateAdmin(#username, #password)")
     @PostMapping("/{db_name}")
     public ResponseEntity<String> createDatabase(@PathVariable("db_name") String dbName,
                                                  @RequestHeader(value = "isBroadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
@@ -57,7 +59,7 @@ public class DatabaseController {
         }
         return new ResponseEntity<>("Database created successfully", HttpStatus.CREATED);
     }
-    @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
+    @PreAuthorize("@authenticationServiceImpl.authenticateAdmin(#username, #password)")
     @DeleteMapping("/{db_name}")
     public ResponseEntity<String> deleteDatabase(@PathVariable("db_name") String dbName,
                                                  @RequestHeader(value = "isBroadcast", required = false, defaultValue = "false") Boolean isBroadcasted,
@@ -81,7 +83,7 @@ public class DatabaseController {
         return new ResponseEntity<>("Database deleted successfully", HttpStatus.OK);
     }
 
-    @PreAuthorize("@authenticationService.authenticateAdmin(#username, #password)")
+    @PreAuthorize("@authenticationServiceImpl.authenticateAdmin(#username, #password)")
     @GetMapping
     public ResponseEntity<List<String>> fetchExistingDatabases(
 

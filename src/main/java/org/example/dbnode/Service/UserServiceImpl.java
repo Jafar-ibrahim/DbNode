@@ -10,7 +10,7 @@ import org.example.dbnode.Exception.OperationFailedException;
 import org.example.dbnode.Exception.ResourceAlreadyExistsException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
 import org.example.dbnode.Model.User;
-import org.example.dbnode.Service.Interface.IUserService;
+import org.example.dbnode.Service.Interfaces.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,13 +18,13 @@ import java.io.File;
 import java.util.Iterator;
 @Log4j2
 @Service
-public class UserService implements IUserService {
+public class UserServiceImpl implements UserService {
 
     private final FileService fileService;
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Autowired
-    public UserService(FileService fileService) {
+    public UserServiceImpl(FileService fileService) {
         this.fileService = fileService;
     }
 

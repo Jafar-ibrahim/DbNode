@@ -1,26 +1,21 @@
 package org.example.dbnode.Service;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
-
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.example.dbnode.Model.User;
-import org.example.dbnode.Service.FileService;
-import org.example.dbnode.Service.Interface.IAuthenticationService;
+import org.example.dbnode.Service.Interfaces.AuthenticationService;
 import org.example.dbnode.Util.PasswordHashing;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
 import java.util.Optional;
 import java.util.function.Function;
 
 @Service
-public class AuthenticationService implements IAuthenticationService {
+public class AuthenticationServiceImpl implements AuthenticationService {
     
     private final FileService fileService;
 
     @Autowired
-    public AuthenticationService(FileService fileService) {
+    public AuthenticationServiceImpl(FileService fileService) {
         this.fileService = fileService;
     }
 

@@ -5,8 +5,10 @@ import org.example.dbnode.Enum.Role;
 import org.example.dbnode.Exception.OperationFailedException;
 import org.example.dbnode.Exception.ResourceAlreadyExistsException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
-import org.example.dbnode.Service.AuthenticationService;
-import org.example.dbnode.Service.UserService;
+import org.example.dbnode.Service.AuthenticationServiceImpl;
+import org.example.dbnode.Service.Interfaces.AuthenticationService;
+import org.example.dbnode.Service.Interfaces.UserService;
+import org.example.dbnode.Service.UserServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,11 +23,11 @@ public class UserController {
     private final UserService userService;
 
     @Autowired
-    public UserController(AuthenticationService authenticationService, UserService userService){
+    public UserController(AuthenticationServiceImpl authenticationService, UserServiceImpl userService){
         this.authenticationService = authenticationService;
         this.userService = userService;
     }
-    @PreAuthorize("@authenticationService.authenticateAdmin(#adminUsername, #adminPassword)")
+    @PreAuthorize("@authenticationServiceImpl.authenticateAdmin(#adminUsername, #adminPassword)")
     @PostMapping("/{username}")
     public ResponseEntity<String> addUser(@PathVariable("username") String username,
                                           @RequestHeader("password") String password,
@@ -44,7 +46,7 @@ public class UserController {
         return new ResponseEntity<>("User added successfully with username: " + username+" and role: "+role, HttpStatus.CREATED);
     }
 
-    @PreAuthorize("@authenticationService.authenticateAdmin(#adminUsername, #adminPassword)")
+    @PreAuthorize("@authenticationServiceImpl.authenticateAdmin(#adminUsername, #adminPassword)")
     @DeleteMapping ("/{username}")
     public ResponseEntity<String> deleteUser(@PathVariable("username") String username,
                                                  @RequestHeader("adminUsername") String adminUsername,
