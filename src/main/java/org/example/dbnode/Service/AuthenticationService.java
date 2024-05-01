@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.example.dbnode.Model.User;
 import org.example.dbnode.Service.FileService;
+import org.example.dbnode.Service.Interface.IAuthenticationService;
 import org.example.dbnode.Util.PasswordHashing;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,7 +15,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 @Service
-public class AuthenticationService {
+public class AuthenticationService implements IAuthenticationService {
     
     private final FileService fileService;
 
@@ -43,29 +44,5 @@ public class AuthenticationService {
         String hashedPassword = PasswordHashing.hashPassword(password);
         String storedPassword = user.getPassword();
         return fileUsername.equals(username) && storedPassword.equals(hashedPassword);
-    }
-
-    public boolean adminExists(String username) {
-        return fileService.getAdminByUsername(username).isPresent();
-    }
-
-    public boolean userExists(User user) {
-        if (user == null || user.getUsername() == null) {
-            return false;
-        }
-        File jsonFile = fileService.getUsersFile();
-        if (jsonFile.exists()) {
-            ArrayNode jsonArray = fileService.readJsonArrayFile(jsonFile);
-            if (jsonArray != null) {
-                for (Object obj : jsonArray) {
-                    ObjectNode userObject = (ObjectNode) obj;
-                    String username = userObject.get("username").asText();
-                    if (username != null && username.equals(user.getUsername())) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
     }
 }

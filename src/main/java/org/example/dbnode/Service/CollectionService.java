@@ -6,8 +6,9 @@ import org.example.dbnode.DatabaseDiskCRUD;
 import org.example.dbnode.Exception.OperationFailedException;
 import org.example.dbnode.Exception.ResourceAlreadyExistsException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
-import org.example.dbnode.Model.DatabaseRegistry;
+import org.example.dbnode.DatabaseRegistry;
 import org.example.dbnode.Model.Schema;
+import org.example.dbnode.Service.Interface.ICollectionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,15 +16,16 @@ import java.io.IOException;
 import java.util.List;
 @Log4j2
 @Service
-public class CollectionService {
+public class CollectionService implements ICollectionService {
     private final DatabaseDiskCRUD databaseDiskCRUD;
     private final DatabaseRegistry databaseRegistry;
 
     @Autowired
-    public CollectionService(DatabaseDiskCRUD databaseDiskCRUD) {
+    public CollectionService(DatabaseDiskCRUD databaseDiskCRUD, DatabaseRegistry databaseRegistry) {
         this.databaseDiskCRUD = databaseDiskCRUD;
-        databaseRegistry = DatabaseRegistry.getInstance();
+        this.databaseRegistry = databaseRegistry;
     }
+
 
     public Schema getCollectionSchema(String databaseName, String collectionName) throws ResourceNotFoundException {
         log.info("getting schema of collection: " + collectionName + " in database: " + databaseName);

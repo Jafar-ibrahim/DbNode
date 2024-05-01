@@ -3,22 +3,18 @@ package org.example.dbnode.Util.DataTypes;
 import org.example.dbnode.DatabaseDiskCRUD;
 import org.example.dbnode.Exception.ResourceNotFoundException;
 import org.example.dbnode.Model.Schema;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Component;
 
 import java.util.Objects;
-
+@Component
 public class DataTypeCaster {
 
     private final DatabaseDiskCRUD databaseDiskCRUD;
-    private static DataTypeCaster instance;
-    private DataTypeCaster() {
-        this.databaseDiskCRUD = DatabaseDiskCRUD.getInstance();
-    }
-
-    public static DataTypeCaster getInstance() {
-        if (instance == null) {
-            instance = new DataTypeCaster();
-        }
-        return instance;
+    @Autowired
+    public DataTypeCaster(@Lazy DatabaseDiskCRUD databaseDiskCRUD) {
+        this.databaseDiskCRUD = databaseDiskCRUD;
     }
 
     public Object castToDataType(String value, String databaseName,String collectionName, String propertyName) throws ResourceNotFoundException {

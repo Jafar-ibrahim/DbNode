@@ -7,6 +7,8 @@ import org.example.dbnode.Exception.*;
 import org.example.dbnode.Model.Document;
 import org.example.dbnode.Model.TestModel;
 import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -14,14 +16,10 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 @Log4j2
+@SpringBootTest
 class DatabaseDiskCRUDTest {
-
-    private static DatabaseDiskCRUD databaseDiskCRUD;
-
-    @BeforeAll
-    static void setup() throws IOException, ResourceNotFoundException {
-        databaseDiskCRUD = DatabaseDiskCRUD.getInstance();
-    }
+    @Autowired
+    private DatabaseDiskCRUD databaseDiskCRUD;
 
     @Test
     void createDatabaseSuccessfully() throws Exception {

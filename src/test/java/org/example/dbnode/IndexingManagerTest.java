@@ -8,6 +8,8 @@ import org.example.dbnode.Service.FileService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.File;
 import java.util.Map;
@@ -15,16 +17,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
-
+@SpringBootTest
 public class IndexingManagerTest {
-
+    @Autowired
     private static IndexingManager indexingManager;
+    @Autowired
     private static FileService fileService;
-    @BeforeAll
-    public static void setup() {
-        fileService = Mockito.mock(FileService.class);
-        indexingManager = IndexingManager.getInstance();
-    }
 
     @Test
     public void createIndex_createsNewIndex_whenIndexDoesNotExist() throws ResourceNotFoundException {

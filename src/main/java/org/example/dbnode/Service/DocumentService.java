@@ -10,6 +10,7 @@ import org.example.dbnode.Exception.SchemaMismatchException;
 import org.example.dbnode.Exception.VersionMismatchException;
 import org.example.dbnode.Model.Document;
 import org.example.dbnode.Model.Schema;
+import org.example.dbnode.Service.Interface.IDocumentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +21,7 @@ import java.util.UUID;
 
 @Service
 @Log4j2
-public class DocumentService {
+public class DocumentService implements IDocumentService {
     private final DatabaseDiskCRUD databaseDiskCRUD;
     private final CollectionService collectionService;
 

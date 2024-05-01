@@ -28,18 +28,10 @@ public class DatabaseDiskCRUD {
     private final IndexingManager indexingManager;
     private final LocksManager locksManager;
 
-
-
-    private static final class InstanceHolder {
-        private static final DatabaseDiskCRUD instance = new DatabaseDiskCRUD();
-    }
-    public static DatabaseDiskCRUD getInstance() {
-        return DatabaseDiskCRUD.InstanceHolder.instance;
-    }
-    public DatabaseDiskCRUD() {
-        indexingManager = IndexingManager.getInstance();
-        locksManager = LocksManager.getInstance();
-        fileService = FileService.getInstance();
+    public DatabaseDiskCRUD(FileService fileService, IndexingManager indexingManager, LocksManager locksManager) {
+        this.fileService = fileService;
+        this.indexingManager = indexingManager;
+        this.locksManager = locksManager;
     }
 
     public void createDatabase(String databaseName) throws ResourceAlreadyExistsException, ResourceNotFoundException {
@@ -344,7 +336,7 @@ public class DatabaseDiskCRUD {
         }
     }
     private int getDocumentIndex(String databaseName, String collectionName, String documentId) throws ResourceNotFoundException {
-        return IndexingManager.getInstance().searchInCollectionIndex(databaseName, collectionName, documentId);
+        return indexingManager.searchInCollectionIndex(databaseName, collectionName, documentId);
     }
 
     public String readDocumentProperty(String databaseName, String collectionName, String documentId, String propertyName) throws ResourceNotFoundException {

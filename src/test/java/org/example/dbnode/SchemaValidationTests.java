@@ -11,20 +11,19 @@ import org.example.dbnode.Model.Document;
 import org.example.dbnode.Model.Schema;
 import org.example.dbnode.Model.TestModel;
 import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.IOException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 @Log4j2
+@SpringBootTest
 public class SchemaValidationTests {
+    @Autowired
     private static DatabaseDiskCRUD databaseDiskCRUD;
     private static final ObjectMapper mapper = new ObjectMapper();
-
-    @BeforeAll
-    static void setup() throws IOException, ResourceNotFoundException {
-        databaseDiskCRUD = DatabaseDiskCRUD.getInstance();
-    }
     @Test
     void createCollectionFromClassAndValidateSchemaSuccessfully() throws Exception {
         databaseDiskCRUD.createDatabase("testDB");

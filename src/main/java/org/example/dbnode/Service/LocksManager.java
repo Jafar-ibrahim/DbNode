@@ -3,7 +3,8 @@ package org.example.dbnode.Service;
 import lombok.extern.log4j.Log4j2;
 import org.example.dbnode.Exception.ResourceNotFoundException;
 import org.example.dbnode.Indexing.IndexingManager;
-import org.example.dbnode.Model.DatabaseRegistry;
+import org.example.dbnode.DatabaseRegistry;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,21 +16,16 @@ public class LocksManager {
     private final ConcurrentHashMap<String, ReentrantLock> databaseLocks;
     private final ConcurrentHashMap<String, ReentrantLock> collectionLocks;
     private final ConcurrentHashMap<String, ReentrantLock> documentLocks;
+    private final DatabaseRegistry databaseRegistry;
     private final IndexingManager indexingManager;
 
-    private LocksManager() {
+    @Autowired
+    public LocksManager(DatabaseRegistry databaseRegistry, IndexingManager indexingManager) {
         this.databaseLocks = new ConcurrentHashMap<>();
         this.collectionLocks = new ConcurrentHashMap<>();
         this.documentLocks = new ConcurrentHashMap<>();
-        this.indexingManager = IndexingManager.getInstance();
-    }
-
-    private static final class InstanceHolder {
-        private static final LocksManager instance = new LocksManager();
-    }
-
-    public static LocksManager getInstance() {
-        return InstanceHolder.instance;
+        this.databaseRegistry = databaseRegistry;
+        this.indexingManager = indexingManager;
     }
 
     public void deleteDatabaseLock(String databaseName) {
@@ -47,7 +43,7 @@ public class LocksManager {
     public ReentrantLock getDatabaseLock(String databaseName) throws ResourceNotFoundException {
         ReentrantLock lock = databaseLocks.get(databaseName);
         if (lock == null) {
-            if (DatabaseRegistry.getInstance().databaseExists(databaseName)) {
+            if (databaseRegistry.databaseExists(databaseName)) {
                 ReentrantLock newLock = new ReentrantLock();
                 lock = databaseLocks.putIfAbsent(databaseName, newLock);
                 if (lock == null) {
@@ -65,7 +61,7 @@ public class LocksManager {
         String key = indexingManager.getCollectionIndexKey(databaseName, collectionName);
         ReentrantLock lock = collectionLocks.get(key);
         if (lock == null) {
-            if (DatabaseRegistry.getInstance().collectionExists(databaseName,collectionName)) {
+            if (databaseRegistry.collectionExists(databaseName,collectionName)) {
                 ReentrantLock newLock = new ReentrantLock();
                 lock = collectionLocks.putIfAbsent(databaseName, newLock);
                 if (lock == null) {

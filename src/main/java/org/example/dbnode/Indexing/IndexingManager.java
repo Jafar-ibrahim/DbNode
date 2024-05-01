@@ -1,36 +1,47 @@
 package org.example.dbnode.Indexing;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.log4j.Log4j2;
 import org.example.dbnode.DatabaseDiskCRUD;
 import org.example.dbnode.Exception.ResourceNotFoundException;
-import org.example.dbnode.Model.DatabaseRegistry;
+import org.example.dbnode.DatabaseRegistry;
 import org.example.dbnode.Model.Document;
 import org.example.dbnode.Model.Schema;
 import org.example.dbnode.Service.FileService;
 import org.example.dbnode.Util.DataTypes.DataTypeCaster;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 @Log4j2
-
+@Component
 public class IndexingManager {
 
-    private final Map<String, CollectionIndex> collectionsIndexMap = new ConcurrentHashMap<>();
-    private final Map<String, PropertyIndex> propertyIndexMap = new ConcurrentHashMap<>();
-    private final Map<String, InvertedPropertyIndex> invertedPropertyIndexMap = new ConcurrentHashMap<>();
-
+    private final Map<String, CollectionIndex> collectionsIndexMap;
+    private final Map<String, PropertyIndex> propertyIndexMap;
+    private final Map<String, InvertedPropertyIndex> invertedPropertyIndexMap;
+    private final DatabaseDiskCRUD databaseDiskCRUD;
     private final FileService fileService;
+    private final DatabaseRegistry databaseRegistry;
+    private final DataTypeCaster dataTypeCaster;
 
-    private IndexingManager() {
-        this.fileService = FileService.getInstance();
+    @Autowired
+    public IndexingManager(@Lazy DatabaseDiskCRUD databaseDiskCRUD, FileService fileService, @Lazy DatabaseRegistry databaseRegistry, DataTypeCaster dataTypeCaster) {
+        this.collectionsIndexMap = new ConcurrentHashMap<>();
+        this.propertyIndexMap = new ConcurrentHashMap<>();
+        this.invertedPropertyIndexMap = new ConcurrentHashMap<>();
+        this.databaseDiskCRUD = databaseDiskCRUD;
+        this.fileService = fileService;
+        this.databaseRegistry = databaseRegistry;
+        this.dataTypeCaster = dataTypeCaster;
     }
+    
     public void init() throws ResourceNotFoundException {
-        DatabaseRegistry databaseRegistry = DatabaseRegistry.getInstance();
         List<String> allDatabases = databaseRegistry.readDatabases();
         if (allDatabases.isEmpty()) {
             log.warn("No databases found, skipping index loading.");
@@ -39,12 +50,6 @@ public class IndexingManager {
         for (String dbName : allDatabases) {
             loadAllIndexes(dbName);
         }
-    }
-    private static final class InstanceHolder {
-        private static final IndexingManager instance = new IndexingManager();
-    }
-    public static IndexingManager getInstance() {
-        return InstanceHolder.instance;
     }
     public void createCollectionIndex(String databaseName, String collectionName) {
         String key = getCollectionIndexKey(databaseName, collectionName);
@@ -145,7 +150,7 @@ public class IndexingManager {
     public void createInvertedPropertyIndex(String databaseName,String collectionName, String propertyName) throws ResourceNotFoundException {
         String propertyIndexKey = getPropertyIndexKey(databaseName, collectionName, propertyName);
         if (!invertedPropertyIndexMap.containsKey(propertyIndexKey)) {
-            String propertyDataType = DataTypeCaster.getInstance().getDataType(databaseName, collectionName, propertyName);
+            String propertyDataType = dataTypeCaster.getDataType(databaseName, collectionName, propertyName);
             InvertedPropertyIndex index;
             switch (Objects.requireNonNull(propertyDataType).toUpperCase()) {
                 case "STRING" -> index = new InvertedPropertyIndex<String>();
@@ -207,7 +212,7 @@ public class IndexingManager {
         }
 
         try {
-            Object propertyValueCasted = DataTypeCaster.getInstance().castToDataType(propertyValue, databaseName, collectionName, propertyName);
+            Object propertyValueCasted = dataTypeCaster.castToDataType(propertyValue, databaseName, collectionName, propertyName);
             if (propertyValueCasted instanceof String) {
                 invertedPropertyIndex.insert((String) propertyValueCasted, documentId);
             } else if (propertyValueCasted instanceof Integer) {
@@ -241,7 +246,7 @@ public class IndexingManager {
         if (invertedPropertyIndex == null) {
             throw new ResourceNotFoundException("Inverted Property Index");
         }
-        Object propertyValueCasted = DataTypeCaster.getInstance().castToDataType(propertyValue, databaseName, collectionName, propertyName);
+        Object propertyValueCasted = dataTypeCaster.castToDataType(propertyValue, databaseName, collectionName, propertyName);
         if (propertyValueCasted instanceof String) {
             return invertedPropertyIndex.search((String) propertyValueCasted);
         } else if (propertyValueCasted instanceof Integer) {
@@ -273,7 +278,7 @@ public class IndexingManager {
             log.error("Inverted Property Index does not exist.");
             throw new ResourceNotFoundException("Inverted Property Index");
         }
-        Object propertyValueCasted = DataTypeCaster.getInstance().castToDataType(propertyValue, databaseName, collectionName, propertyName);
+        Object propertyValueCasted = dataTypeCaster.castToDataType(propertyValue, databaseName, collectionName, propertyName);
         if (propertyValueCasted instanceof String) {
             invertedPropertyIndex.search("\""+ propertyValueCasted +"\"").remove(documentId);
         } else if (propertyValueCasted instanceof Integer) {
@@ -349,7 +354,7 @@ public class IndexingManager {
             createInvertedPropertyIndex(databaseName,collectionName,propertyName);
             invertedPropertyIndex = invertedPropertyIndexMap.get(key);
         }
-        String propertyType = DataTypeCaster.getInstance().getDataType(databaseName, collectionName, propertyName);
+        String propertyType = dataTypeCaster.getDataType(databaseName, collectionName, propertyName);
         Map<String, String> indexData = fileService.readPropertyIndexFile(indexFile);
 
         switch (Objects.requireNonNull(propertyType).toUpperCase()) {
@@ -383,7 +388,6 @@ public class IndexingManager {
     }
 
     public void deleteDocumentRelatedIndexes(String databaseName,String collectionName, String documentId) throws ResourceNotFoundException {
-        DatabaseDiskCRUD databaseDiskCRUD = DatabaseDiskCRUD.getInstance();
         Document document = databaseDiskCRUD.fetchDocumentFromDatabase(databaseName, collectionName, documentId)
                                             .orElseThrow(() -> new ResourceNotFoundException("Document with id : "+documentId));
         ObjectNode documentContent = document.getContent();

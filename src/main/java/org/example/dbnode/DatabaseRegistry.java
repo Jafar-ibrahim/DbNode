@@ -1,4 +1,4 @@
-package org.example.dbnode.Model;
+package org.example.dbnode;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.log4j.Log4j2;
@@ -7,7 +7,12 @@ import org.example.dbnode.Exception.InvalidResourceNameException;
 import org.example.dbnode.Exception.ResourceAlreadyExistsException;
 import org.example.dbnode.Exception.ResourceNotFoundException;
 import org.example.dbnode.Indexing.IndexingManager;
+import org.example.dbnode.Model.Collection;
+import org.example.dbnode.Model.Database;
+import org.example.dbnode.Model.Schema;
 import org.example.dbnode.Service.FileService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -18,12 +23,14 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class DatabaseRegistry {
     private final ConcurrentHashMap<String, Database> databases;
-    private final FileService fileService ;
+    private final FileService fileService;
+    private final IndexingManager indexingManager;
 
-    private DatabaseRegistry() throws ResourceNotFoundException {
+    @Autowired
+    public DatabaseRegistry(@Lazy DatabaseDiskCRUD databaseDiskCRUD , IndexingManager indexingManager) throws ResourceNotFoundException {
         this.databases = new ConcurrentHashMap<>();
-        DatabaseDiskCRUD databaseDiskCRUD = new DatabaseDiskCRUD();
         fileService = FileService.getInstance();
+        this.indexingManager = indexingManager;
         for(String database :fileService.getAllDatabases()){
             databases.put(database,new Database(database));
             for(String collection: databaseDiskCRUD.readCollections(database)){
@@ -31,23 +38,6 @@ public class DatabaseRegistry {
                 databases.get(database).getCollectionMap().put(collection,new Collection(collection,schema));
             }
         }
-    }
-
-    private static final class InstanceHolder {
-        private static final DatabaseRegistry instance;
-
-        static {
-            try {
-                instance = new DatabaseRegistry();
-            } catch (ResourceNotFoundException e) {
-                log.error("Error initializing DatabaseRegistry");
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    public static DatabaseRegistry getInstance() {
-        return InstanceHolder.instance;
     }
 
     public synchronized void addDatabase(String databaseName) throws ResourceAlreadyExistsException {
@@ -59,13 +49,6 @@ public class DatabaseRegistry {
         }
         Database database = new Database(databaseName);
         databases.put(databaseName, database);
-    }
-
-    public Database getOrCreateDatabase(String databaseName) {
-        if (fileService.invalidResourceName(databaseName)) {
-            throw new InvalidResourceNameException("Database");
-        }
-        return databases.computeIfAbsent(databaseName, Database::new);
     }
 
     public List<String> readDatabases() {
@@ -102,15 +85,15 @@ public class DatabaseRegistry {
             databases.get(databaseName).getCollectionMap().remove(collectionName);
         }
     }
-    public boolean collectionExists(String databaseName, String collectionName) {
-        return databaseExists(databaseName) && databases.get(databaseName).getCollectionMap().containsKey(collectionName);
-    }
 
     public void deleteDatabase(String databaseName) {
         if (databaseName == null || databaseName.trim().isEmpty()) {
             throw new InvalidResourceNameException("Database");
         }
         databases.remove(databaseName);
-        IndexingManager.getInstance().deleteAllIndexes(); //clear all the indexes if
+        indexingManager.deleteAllIndexes(); //clear all the indexes if
+    }
+    public boolean collectionExists(String databaseName, String collectionName) {
+        return databaseExists(databaseName) && databases.get(databaseName).getCollectionMap().containsKey(collectionName);
     }
 }
